@@ -1,0 +1,26 @@
+/* App launcher button.
+ *
+ * It is the only accent-filled circle on the whole bar - everything else is a
+ * flat glyph or a neutral pill - so it reads as the one "do something" button
+ * rather than another status indicator.
+ *
+ * The colour names are Matugen's (@primary / @on_primary), so the button
+ * follows the wallpaper along with everything else. */
+
+#custom-appmenu {
+    font-family: "Material Icons Round", "Material Icons";
+    font-size: 20px;
+    color: @on_primary;
+    background-color: @primary;
+    border: none;
+    border-radius: 100%;
+    padding: 0px 7px 0px 7px;
+    margin: 6px 12px 6px 6px;
+    transition: all 0.2s ease-out;
+}
+
+#custom-appmenu:hover {
+    color: @on_primary;
+    background-color: @primary;
+    box-shadow: 0px 0px 0px 3px alpha(@primary, 0.35);
+}

@@ -1,0 +1,16 @@
+// App launcher button.
+//
+// "apps" is a Material Icons Round ligature (the 3x3 launcher grid), not a word
+// - the glyph only appears because #custom-appmenu sets that font in
+// style/appmenu.css. Swap the font and this reads literally as "apps".
+//
+// Place it first in "modules-center" so it sits immediately left of the taskbar.
+{
+  "custom/appmenu": {
+    "format": "apps",
+    "on-click": "waybar-app-launcher-toggle",
+    "on-click-middle": "sleep 0.2; rofi -show drun -replace",
+    "on-click-right": "~/.config/hypr/scripts/keybindings.sh",
+    "tooltip-format": "Left: Open the app launcher\nMiddle: Search apps (rofi)\nRight: Show all keybindings"
+  }
+}
