@@ -163,6 +163,34 @@ def temperature():
     return round(best, 1) if best is not None else None
 
 
+def fans():
+    """Fan RPMs from `sensors -j`.
+
+    Not read from /sys/class/hwmon directly: on this machine the fans live under
+    a platform driver that exposes no fan*_input files there, so a sysfs sweep
+    finds nothing while lm-sensors reports both fans fine. The acpi_fan chip is
+    skipped because it duplicates the first real fan.
+    """
+    if not shutil.which("sensors"):
+        return None
+    try:
+        data = json.loads(run(["sensors", "-j"]) or "{}")
+    except Exception:
+        return None
+
+    found = []
+    for chip, readings in data.items():
+        if chip.startswith("acpi_fan"):
+            continue
+        for label, values in readings.items():
+            if not isinstance(values, dict):
+                continue
+            for key, rpm in values.items():
+                if key.endswith("_input") and key.startswith("fan") and rpm:
+                    found.append({"label": label.replace("fan", "Fan "), "rpm": int(rpm)})
+    return found or None
+
+
 def uptime():
     try:
         with open("/proc/uptime") as f:
@@ -240,6 +268,7 @@ if __name__ == "__main__":
         "disk": disk(),
         "network": network(),
         "temperature": temperature(),
+        "fans": fans(),
         "uptime": uptime(),
         "load": load(),
         "cores": os.cpu_count(),

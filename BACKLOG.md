@@ -11,8 +11,13 @@ Ideas parked rather than built, so they stay out of the working context.
   agent and BlueZ's pairing agent. The panels cover the common paths (wifi PSK, pairing
   without confirmation) but a VPN prompt, an 802.1x prompt, or a device that needs a PIN
   confirmed has nothing to display it.
-- **Notifications in the Control Center.** `Quickshell.Services.Notifications` exists;
-  the bar still hands off to swaync.
+- **The notification *list* in the Control Center.** Currently only the count, DND state
+  and a button that opens swaync's own panel. Showing the notifications themselves means
+  **Quickshell has to become the notification daemon** — only one process can own
+  `org.freedesktop.Notifications`, and swaync exposes no way to read its list
+  (`swaync-client` has count and DND, no enumeration). That is a real swap:
+  `NotificationServer` for the list and actions, plus toast popups to replace the ones
+  swaync draws, plus disabling swaync. Its own phase, not a patch.
 - **Media controls.** `Quickshell.Services.Mpris` — would replace `custom/nowplaying`.
 - **Bluetooth battery on the bar**, not only in the panel.
 

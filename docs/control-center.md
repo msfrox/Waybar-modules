@@ -23,7 +23,8 @@ keeps one button.
 | Section | Source |
 |---|---|
 | **Calendar** | month grid, independent of the bar's clock popup |
-| **System** | `waybar/scripts/system-stats.py` — CPU, memory, swap, disk, temperature, network rates, uptime, load |
+| **System** | `waybar/scripts/system-stats.py` — CPU, memory, swap, disk, temperature, fan RPMs, network rates, uptime, load |
+| **Display** | two brightness sliders — internal panel via `brightnessctl`, external monitor via DDC/CI |
 | **Quick actions** | Wi-Fi, Bluetooth, mute, do-not-disturb, lock, clipboard, keep-awake, night light, power profile — the bar's old `group/tools` plus the four toggles from swaync's own buttons-grid |
 | **Notifications** | count, DND state and the panel toggle, over `swaync-client` |
 | **Updates** | `ml4w-check-system-updates`, on its own 30-minute timer |
@@ -110,3 +111,24 @@ card here uses the same 0.30 alpha so the two panels look like the same system.
 **Tooltips use the `ToolTip` attached property**, gated on the MouseArea's `containsMouse`.
 The tiles show their *current state* rather than their name, so without a tooltip there is
 nowhere a tile says what it actually is.
+
+**No scroll view.** The panel grows to fit its sections. A control centre you have to
+scroll defeats the point — everything in it is meant to be one glance away — and the window
+is already sized from the content column's `implicitHeight`, so a scroll view would only
+fight it. The remaining cap is a guard against running off the top of the screen.
+
+**Fans come from `sensors -j`, not sysfs.** On this machine the fans sit under a platform
+driver that exposes no `fan*_input` files under `/sys/class/hwmon`, so a sysfs sweep finds
+nothing while lm-sensors reports both fine. The `acpi_fan` chip is skipped — it duplicates
+the first real fan.
+
+**The two brightness sliders are not the same mechanism.** Internal is a sysfs backlight
+through `brightnessctl` — instant. External is DDC/CI over the monitor's I2C bus through
+`ddcutil`, where a `detect` sweep costs a second or more, so the bus number is cached after
+the first detect and writes are debounced: a drag emits a value per pixel and each one
+would otherwise be its own I2C round-trip. Internal is floored at 1% — a slider that can
+reach 0 leaves you with a black panel and no way to see the slider you need to drag back.
+
+**`mode_fan` is Material *Symbols*, not Material Icons.** The Round font here has no fan
+glyph; `toys` (a pinwheel) is the closest that actually renders. A missing ligature renders
+as the literal fallback, not as nothing, so it is easy to miss.

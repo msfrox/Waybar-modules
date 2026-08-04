@@ -40,7 +40,8 @@ PanelWindow {
     // Bottom-anchored and content-sized rather than full height: a panel pinned
     // to both vertical edges is mostly empty space on a 2560px-tall screen, and
     // it reads as a second desktop rather than as something the bar opened.
-    // Capped so a long tray list scrolls instead of running off the top.
+    // The cap is a last-resort guard against running off the top of the
+    // screen, not a scroll threshold - there is no scroll view any more.
     // Pushed up from the body rather than read down into it: referencing the
     // scroll column's id from here is a forward reference the root's
     // implicitHeight binding evaluates before that object exists, which throws
@@ -49,7 +50,7 @@ PanelWindow {
     // 160 = the card's 20px shadow inset top and bottom, its 20px inner padding
     // top and bottom, the header row, and the divider under it.
     property real bodyHeight: 0
-    implicitHeight: Math.min(root.bodyHeight + 160, 1300)
+    implicitHeight: Math.min(root.bodyHeight + 160, 2400)
 
     anchors {
         right: true
@@ -64,6 +65,7 @@ PanelWindow {
         if (isOpen) {
             showWindow = true
             refresh()
+            reloadBrightness()
         }
     }
 
@@ -126,6 +128,50 @@ PanelWindow {
         triggeredOnStart: true
         running: root.isOpen
         onTriggered: root.refresh()
+    }
+
+    // --- BRIGHTNESS ---
+    // Off the 2-second stats tick: reading the external monitor is a DDC/CI
+    // round-trip over I2C, which is slow and does not like being hammered. Read
+    // on open, and after a drag settles.
+    property var brightness: ({})
+
+    Process {
+        id: brightnessProc
+        command: [Quickshell.env("HOME") + "/.config/waybar/scripts/brightness.py", "get"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.brightness = JSON.parse(this.text) } catch (e) {}
+            }
+        }
+    }
+
+    function reloadBrightness() {
+        if (!brightnessProc.running) brightnessProc.running = true
+    }
+
+    Process { id: brightnessSet }
+
+    // Debounced: a drag emits a value on every pixel, and each external write is
+    // a DDC round-trip. Only the value the slider settles on is actually sent.
+    Timer {
+        id: brightnessDebounce
+        interval: 120
+        repeat: false
+        property string target: ""
+        property int value: 0
+        onTriggered: {
+            brightnessSet.command = [
+                Quickshell.env("HOME") + "/.config/waybar/scripts/brightness.py",
+                "set", target, String(value)]
+            brightnessSet.running = true
+        }
+    }
+
+    function setBrightness(target, value) {
+        brightnessDebounce.target = target
+        brightnessDebounce.value = value
+        brightnessDebounce.restart()
     }
 
     // --- PENDING UPDATES ---
@@ -398,6 +444,84 @@ PanelWindow {
         }
     }
 
+    // Icon + slider + percentage, for the two brightness controls.
+    component BrightnessRow: RowLayout {
+        id: brow
+        required property string glyph
+        required property string label
+        required property int percent
+        property string hint: ""
+        signal moved(int value)
+
+        Layout.fillWidth: true
+        spacing: 12
+
+        Glyph {
+            text: brow.glyph
+            font.pixelSize: 18
+
+            ToolTip.visible: browHover.containsMouse && brow.hint !== ""
+            ToolTip.text: brow.hint
+            ToolTip.delay: 400
+
+            MouseArea {
+                id: browHover
+                anchors.fill: parent
+                anchors.margins: -4
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+            }
+        }
+
+        Slider {
+            id: brightSlider
+            Layout.fillWidth: true
+            from: 1
+            to: 100
+            // Taken on change rather than bound, so a live reading arriving
+            // mid-drag does not fight the handle.
+            value: brow.percent
+            onMoved: brow.moved(Math.round(value))
+
+            background: Rectangle {
+                x: brightSlider.leftPadding
+                y: brightSlider.topPadding + brightSlider.availableHeight / 2 - height / 2
+                implicitHeight: 6
+                width: brightSlider.availableWidth
+                height: implicitHeight
+                radius: 3
+                color: Qt.rgba(Theme.on_surface.r, Theme.on_surface.g, Theme.on_surface.b, 0.2)
+
+                Rectangle {
+                    width: brightSlider.visualPosition * parent.width
+                    height: parent.height
+                    radius: 3
+                    color: Theme.primary
+                }
+            }
+
+            handle: Rectangle {
+                x: brightSlider.leftPadding + brightSlider.visualPosition * (brightSlider.availableWidth - width)
+                y: brightSlider.topPadding + brightSlider.availableHeight / 2 - height / 2
+                implicitWidth: 16
+                implicitHeight: 16
+                radius: 100
+                color: brightSlider.pressed ? Theme.background : Theme.primary
+                border.color: Theme.primary
+                border.width: 2
+            }
+        }
+
+        Text {
+            text: brow.percent + "%"
+            font.family: Theme.fontFamily
+            font.pixelSize: 12
+            color: Theme.on_surface
+            horizontalAlignment: Text.AlignRight
+            Layout.preferredWidth: 38
+        }
+    }
+
     component InfoPill: Rectangle {
         id: pill
         required property string glyph
@@ -587,20 +711,14 @@ PanelWindow {
             }
 
             // --- SCROLLING BODY ---
-            ScrollView {
-                id: bodyScroll
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                contentWidth: availableWidth
-                clip: true
-
-                ColumnLayout {
+            // No ScrollView: the panel grows to fit its sections instead of
+            // capping and scrolling. A control centre you have to scroll defeats
+            // the point - everything in it is meant to be one glance away - and
+            // the window is sized from this column's implicitHeight anyway, so
+            // the two would only ever fight each other.
+            ColumnLayout {
                     id: body
-                    // Bound to the ScrollView by id. `parent.parent` resolves to
-                    // the internal Flickable, whose availableWidth is not the
-                    // one that matters - the column ended up sized to its own
-                    // content and hugged the left edge.
-                    width: bodyScroll.availableWidth
+                    Layout.fillWidth: true
                     spacing: 12
 
                     onImplicitHeightChanged: root.bodyHeight = implicitHeight
@@ -732,21 +850,17 @@ PanelWindow {
                                     ? root.humanBytes(root.stats.memory.swap_used) : ""
                         }
 
-                        // 2x2, not a single row: four pills across ~380px left
-                        // each one about 90px, and "118 KB/s" plus its icon does
-                        // not fit in that, so the values ran into each other.
+                        // Two pills per row: four across ~380px left each about
+                        // 90px, and "118 KB/s" plus its icon does not fit in
+                        // that, so the values ran into each other. Down and Up
+                        // share a row so the two halves of the same reading sit
+                        // side by side.
                         GridLayout {
                             Layout.fillWidth: true
                             Layout.topMargin: 4
                             columns: 2
                             rowSpacing: 6
                             columnSpacing: 6
-
-                            InfoPill {
-                                glyph: "device_thermostat"
-                                value: root.stats.temperature ? root.stats.temperature + "°C" : "—"
-                                caption: "Temp"
-                            }
 
                             InfoPill {
                                 glyph: "download"
@@ -761,10 +875,67 @@ PanelWindow {
                             }
 
                             InfoPill {
+                                glyph: "device_thermostat"
+                                value: root.stats.temperature ? root.stats.temperature + "°C" : "—"
+                                caption: "Temp"
+                            }
+
+                            InfoPill {
                                 glyph: "schedule"
                                 value: root.humanUptime(root.stats.uptime)
                                 caption: "Uptime"
                             }
+
+                            // One pill per physical fan. lm-sensors reports both
+                            // on this machine; a laptop with one gets one pill
+                            // and a fanless one gets none.
+                            Repeater {
+                                model: root.stats.fans || []
+
+                                InfoPill {
+                                    required property var modelData
+                                    // "toys" is a pinwheel - Material Icons Round has no fan glyph
+                                    glyph: "toys"
+                                    value: modelData.rpm + " rpm"
+                                    caption: modelData.label
+                                }
+                            }
+                        }
+                    }
+
+                    // ---------- DISPLAY ----------
+                    Section {
+                        title: "Display"
+                        glyph: "brightness_6"
+
+                        BrightnessRow {
+                            visible: !!(root.brightness.internal)
+                            glyph: "brightness_low"
+                            label: "Internal"
+                            hint: "Laptop panel backlight"
+                            percent: root.brightness.internal
+                                     ? root.brightness.internal.percent : 0
+                            onMoved: value => root.setBrightness("internal", value)
+                        }
+
+                        BrightnessRow {
+                            visible: !!(root.brightness.external)
+                            glyph: "desktop_windows"
+                            label: "External"
+                            hint: "External monitor over DDC/CI — slower to respond than the panel"
+                            percent: root.brightness.external
+                                     && root.brightness.external.percent !== null
+                                     ? root.brightness.external.percent : 0
+                            onMoved: value => root.setBrightness("external", value)
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: !root.brightness.internal && !root.brightness.external
+                            text: "No controllable displays found"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            color: Theme.outline
                         }
                     }
 
@@ -1095,7 +1266,6 @@ PanelWindow {
                             }
                         }
                     }
-                }
             }
         }
     }
