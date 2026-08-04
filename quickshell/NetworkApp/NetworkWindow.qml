@@ -85,6 +85,38 @@ PanelWindow {
         function isOpen(): bool { return root.isOpen }
     }
 
+    // --- EXTRA DETAIL (link rate, addressing, Tailscale) ---
+    //
+    // Quickshell.Networking models what NetworkManager exposes as objects, which
+    // stops short of link rate and channel frequency, and knows nothing about
+    // Tailscale. Rather than scattering Process blocks through this file, one
+    // helper script returns all of it as a single JSON object.
+    property var details: ({})
+
+    Process {
+        id: detailsProc
+        command: [Quickshell.env("HOME") + "/.config/waybar/scripts/network-details.py"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.details = JSON.parse(this.text)
+                } catch (e) {
+                    root.details = {}
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 5000
+        repeat: true
+        triggeredOnStart: true
+        // Only while the panel is on screen - this shells out to nmcli and
+        // tailscale, which is not something to do every five seconds forever.
+        running: root.isOpen
+        onTriggered: if (!detailsProc.running) detailsProc.running = true
+    }
+
     // --- NETWORKMANAGER ---
     readonly property var devices: Networking.devices ? Networking.devices.values : []
     readonly property var wifiDevice: devices.find(d => d.type === DeviceType.Wifi) || null
@@ -146,6 +178,36 @@ PanelWindow {
         opacity: 0.3
     }
 
+    // A label/value line in the detail blocks. Hides itself when the value is
+    // missing, so a machine without (say) a gateway simply shows one row fewer
+    // rather than an empty field.
+    component DetailRow: RowLayout {
+        required property string label
+        property string value: ""
+
+        Layout.fillWidth: true
+        spacing: 8
+        visible: value !== "" && value !== "undefined" && value !== "null"
+
+        Text {
+            text: parent.label
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            color: Theme.outline
+            Layout.preferredWidth: 76
+            leftPadding: 8
+        }
+
+        Text {
+            Layout.fillWidth: true
+            text: parent.value
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            color: Theme.on_surface
+            elide: Text.ElideRight
+        }
+    }
+
     component Toggle: Rectangle {
         id: tgl
         property bool checked: false
@@ -204,7 +266,7 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.62)
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
             }
         }
 
@@ -525,6 +587,109 @@ PanelWindow {
                 font.pixelSize: 11
                 color: Theme.outline
                 leftPadding: 8
+            }
+
+            // --- CONNECTION DETAILS ---
+            // The same facts the bar module's hover tooltip used to carry, which
+            // was the only place they lived once the module started opening this
+            // panel instead of showing a tooltip.
+            Divider { visible: root.details.wifi !== undefined && root.details.wifi !== null }
+
+            SectionLabel {
+                text: "Connection"
+                visible: root.details.wifi !== undefined && root.details.wifi !== null
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 3
+                visible: root.details.wifi !== undefined && root.details.wifi !== null
+
+                DetailRow { label: "Network"; value: root.details.wifi ? (root.details.wifi.ssid || "") : "" }
+                DetailRow { label: "Interface"; value: root.details.wifi ? (root.details.wifi.interface || "") : "" }
+                DetailRow { label: "IP"; value: root.details.wifi ? (root.details.wifi.address || "") : "" }
+                DetailRow { label: "Gateway"; value: root.details.wifi ? (root.details.wifi.gateway || "") : "" }
+                DetailRow { label: "DNS"; value: root.details.wifi ? (root.details.wifi.dns || "") : "" }
+                DetailRow {
+                    label: "Signal"
+                    value: root.details.wifi && root.details.wifi.signal !== null
+                           ? root.details.wifi.signal + "%" : ""
+                }
+                DetailRow { label: "Link rate"; value: root.details.wifi ? (root.details.wifi.rate || "") : "" }
+                DetailRow { label: "Frequency"; value: root.details.wifi ? (root.details.wifi.frequency || "") : "" }
+                DetailRow { label: "Security"; value: root.details.wifi ? (root.details.wifi.security || "") : "" }
+            }
+
+            // --- TAILSCALE ---
+            // Not a NetworkManager device, so none of the machinery above sees
+            // it; this block is driven entirely by `tailscale status --json`.
+            Divider { visible: root.details.tailscale !== undefined && root.details.tailscale !== null }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: root.details.tailscale !== undefined && root.details.tailscale !== null
+                spacing: 10
+
+                SectionLabel { Layout.fillWidth: true; text: "Tailscale" }
+
+                Text {
+                    readonly property bool up: root.details.tailscale
+                                               && root.details.tailscale.state === "Running"
+                    text: up ? "Disconnect" : "Connect"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    color: tsMouse.containsMouse ? Theme.primary : Theme.outline
+
+                    MouseArea {
+                        id: tsMouse
+                        anchors.fill: parent
+                        anchors.margins: -6
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            Quickshell.execDetached(
+                                ["tailscale", parent.up ? "down" : "up"])
+                            // Give the daemon a moment before re-reading, or the
+                            // panel shows the state we just left.
+                            tsRecheck.restart()
+                        }
+                    }
+                }
+            }
+
+            Timer {
+                id: tsRecheck
+                interval: 1200
+                repeat: false
+                onTriggered: if (!detailsProc.running) detailsProc.running = true
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 3
+                visible: root.details.tailscale !== undefined && root.details.tailscale !== null
+
+                DetailRow {
+                    label: "Status"
+                    value: {
+                        const ts = root.details.tailscale
+                        if (!ts) return ""
+                        if (ts.state !== "Running") return ts.state || "Stopped"
+                        return ts.online ? "Connected" : "Running (offline)"
+                    }
+                }
+                DetailRow { label: "Machine"; value: root.details.tailscale ? (root.details.tailscale.hostname || "") : "" }
+                DetailRow { label: "IP"; value: root.details.tailscale ? (root.details.tailscale.ip || "") : "" }
+                DetailRow { label: "Tailnet"; value: root.details.tailscale ? (root.details.tailscale.tailnet || "") : "" }
+                DetailRow { label: "MagicDNS"; value: root.details.tailscale ? (root.details.tailscale.magic_dns || "") : "" }
+                DetailRow { label: "Exit node"; value: root.details.tailscale ? (root.details.tailscale.exit_node || "") : "" }
+                DetailRow {
+                    label: "Peers"
+                    value: root.details.tailscale && root.details.tailscale.peers_total !== undefined
+                           ? root.details.tailscale.peers_online + " of "
+                             + root.details.tailscale.peers_total + " online"
+                           : ""
+                }
             }
 
             Item { Layout.fillHeight: true }

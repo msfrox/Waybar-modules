@@ -7,3 +7,4 @@ __pycache__/
 
 # generated at runtime
 waybar/scripts/.cache/
+__pycache__/

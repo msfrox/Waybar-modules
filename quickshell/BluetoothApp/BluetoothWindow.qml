@@ -280,7 +280,7 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.62)
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
             }
         }
 
