@@ -24,7 +24,13 @@ keeps one button.
 |---|---|
 | **Calendar** | month grid, independent of the bar's clock popup |
 | **System** | `waybar/scripts/system-stats.py` — CPU, memory, swap, disk, temperature, network rates, uptime, load |
+| **Quick actions** | clipboard, keep-awake, night light, power profile — the bar's old `group/tools` |
+| **Updates** | `ml4w-check-system-updates`, on its own 30-minute timer |
 | **Tray** | `Quickshell.Services.SystemTray` — real StatusNotifierItem icons, `activate()` on left click, the item's own DBus menu on right |
+
+The panel is **bottom-anchored and content-sized**, not full height: a surface pinned to
+both vertical edges is mostly empty space on a tall screen and reads as a second desktop
+rather than as something the bar opened. It caps at 1300px so a long tray list scrolls.
 
 The point of the first version is the **frame**, not the contents. Anything added later
 drops into a `Section`:
@@ -41,9 +47,9 @@ Section {
 ## Migrating a module off the bar
 
 Incremental on purpose — a module stays on the bar until its replacement here is at least
-as good. `group/hardware` and `group/tray` have moved; their definitions are still in
-`modules.json`, just no longer listed in the theme's `config`, so putting them back is a
-one-line edit.
+as good. `group/hardware`, `group/tools`, `group/tray` and `custom/updates` have moved; their
+definitions are still in `modules.json`, just no longer listed in the theme's `config`, so
+putting any of them back is a one-line edit.
 
 1. Build the section here and check it live.
 2. Remove the module from `modules-left/center/right` in the theme's `config`.
@@ -75,3 +81,17 @@ misbehaves. Wrap the row in a plain `Item` and anchor inside that.
 **Guard bindings against the first frame.** `visible: stats.memory && stats.memory.swap_total > 0`
 evaluates to `undefined` before the first stats read, and `undefined` is not assignable to
 `bool`. Coerce with `!!(...)`.
+
+**The update count is deliberately off the stats tick.** `checkupdates` hits the package
+databases and takes seconds; it runs on open and then every 30 minutes, the same cadence
+the bar module used. CPU, memory and the tool states are cheap enough for the 2-second
+tick.
+
+**Do not reference a nested `id` from the root's `implicitHeight`.** The root binding is
+evaluated before the nested object exists, which throws
+`ReferenceError: body is not defined` and leaves the window unsized. Push the value up
+from the child (`onImplicitHeightChanged: root.bodyHeight = implicitHeight`) instead.
+
+**Bind a `ScrollView`'s content width to the ScrollView by id.** `parent.parent` inside it
+resolves to the internal `Flickable`, whose `availableWidth` is not the one that matters —
+the column sizes to its own content and hugs the left edge.

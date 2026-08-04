@@ -37,10 +37,22 @@ PanelWindow {
     implicitWidth: 460
     color: "transparent"
 
-    // Full height, unlike the popups - this is a panel, not a menu.
+    // Bottom-anchored and content-sized rather than full height: a panel pinned
+    // to both vertical edges is mostly empty space on a 2560px-tall screen, and
+    // it reads as a second desktop rather than as something the bar opened.
+    // Capped so a long tray list scrolls instead of running off the top.
+    // Pushed up from the body rather than read down into it: referencing the
+    // scroll column's id from here is a forward reference the root's
+    // implicitHeight binding evaluates before that object exists, which throws
+    // "ReferenceError: body is not defined" and leaves the window unsized.
+    //
+    // 160 = the card's 20px shadow inset top and bottom, its 20px inner padding
+    // top and bottom, the header row, and the divider under it.
+    property real bodyHeight: 0
+    implicitHeight: Math.min(root.bodyHeight + 160, 1300)
+
     anchors {
         right: true
-        top: true
         bottom: true
     }
 
@@ -55,13 +67,12 @@ PanelWindow {
         }
     }
 
-    // Slides horizontally rather than vertically: it is anchored to both
-    // vertical edges, so there is no off-screen position in that axis.
+    // Slides in from the right edge. Same 45px bottom margin as the popups, so
+    // its lower edge lines up with theirs above the 55px bar.
     property real currentRightMargin: isOpen ? 0 : -520
 
     margins {
-        top: 8
-        bottom: 63   // clears the 55px bar plus the card's own breathing room
+        bottom: 45
         right: root.currentRightMargin
     }
 
@@ -115,6 +126,51 @@ PanelWindow {
         triggeredOnStart: true
         running: root.isOpen
         onTriggered: root.refresh()
+    }
+
+    // --- PENDING UPDATES ---
+    // Kept off the stats tick on purpose: this hits the package databases and
+    // takes seconds, so it runs on open and then only every 30 minutes - the
+    // same cadence the bar module used.
+    property int updateCount: 0
+
+    Process {
+        id: updatesProc
+        command: [Quickshell.env("HOME") + "/.config/ml4w/scripts/ml4w-check-system-updates"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const payload = JSON.parse(this.text)
+                    root.updateCount = parseInt(payload.text) || 0
+                } catch (e) {
+                    root.updateCount = 0
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 1800000
+        repeat: true
+        triggeredOnStart: true
+        running: root.isOpen
+        onTriggered: if (!updatesProc.running) updatesProc.running = true
+    }
+
+    // Runs a shell command and closes the panel - the shape every quick action
+    // that hands off to another window takes.
+    function launch(command) {
+        Quickshell.execDetached(["bash", "-c", command])
+        root.isOpen = false
+    }
+
+    // Runs a shell command and stays open, then re-reads state so the tile's
+    // active styling catches up with what just happened.
+    Process { id: toggleProc; onExited: root.refresh() }
+
+    function toggleAction(command) {
+        toggleProc.command = ["bash", "-c", command]
+        toggleProc.running = true
     }
 
     // --- FORMATTING ---
@@ -277,6 +333,55 @@ PanelWindow {
                 color: root.loadColor(statRoot.percent)
                 Behavior on width { NumberAnimation { duration: 300 } }
             }
+        }
+    }
+
+    // A quick action. `active` gives it the accent fill, which is what makes a
+    // toggle readable at a glance without a separate state label.
+    component ToolTile: Rectangle {
+        id: tile
+        required property string glyph
+        required property string label
+        property string detail: ""
+        property bool active: false
+        signal triggered
+
+        Layout.fillWidth: true
+        implicitHeight: 56
+        radius: 8
+        color: active ? Theme.primary
+                      : tileMouse.containsMouse
+                        ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.18)
+                        : Qt.rgba(Theme.on_surface.r, Theme.on_surface.g, Theme.on_surface.b, 0.07)
+        Behavior on color { ColorAnimation { duration: 150 } }
+        clip: true
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 1
+
+            Glyph {
+                Layout.alignment: Qt.AlignHCenter
+                text: tile.glyph
+                font.pixelSize: 18
+                color: tile.active ? Theme.on_primary : Theme.primary
+            }
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: tile.detail !== "" ? tile.detail : tile.label
+                font.family: Theme.fontFamily
+                font.pixelSize: 10
+                color: tile.active ? Theme.on_primary : Theme.on_surface
+            }
+        }
+
+        MouseArea {
+            id: tileMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: tile.triggered()
         }
     }
 
@@ -466,14 +571,23 @@ PanelWindow {
 
             // --- SCROLLING BODY ---
             ScrollView {
+                id: bodyScroll
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 contentWidth: availableWidth
                 clip: true
 
                 ColumnLayout {
-                    width: parent.parent.availableWidth
+                    id: body
+                    // Bound to the ScrollView by id. `parent.parent` resolves to
+                    // the internal Flickable, whose availableWidth is not the
+                    // one that matters - the column ended up sized to its own
+                    // content and hugged the left edge.
+                    width: bodyScroll.availableWidth
                     spacing: 12
+
+                    onImplicitHeightChanged: root.bodyHeight = implicitHeight
+                    Component.onCompleted: root.bodyHeight = implicitHeight
 
                     // ---------- CALENDAR ----------
                     Section {
@@ -635,6 +749,123 @@ PanelWindow {
                                 caption: "Uptime"
                             }
                         }
+                    }
+
+                    // ---------- QUICK ACTIONS ----------
+                    // These were the bar's group/tools drawer.
+                    Section {
+                        title: "Quick actions"
+                        glyph: "bolt"
+
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 4
+                            rowSpacing: 6
+                            columnSpacing: 6
+
+                            ToolTile {
+                                glyph: "content_paste"
+                                label: "Clipboard"
+                                onTriggered: root.launch(
+                                    Quickshell.env("HOME") + "/.config/ml4w/scripts/ml4w-cliphist")
+                            }
+
+                            ToolTile {
+                                glyph: root.stats.tools && root.stats.tools.idle_inhibited
+                                       ? "coffee" : "bedtime"
+                                label: "Keep awake"
+                                detail: root.stats.tools && root.stats.tools.idle_inhibited
+                                        ? "Awake" : "Auto-sleep"
+                                active: !!(root.stats.tools && root.stats.tools.idle_inhibited)
+                                onTriggered: root.toggleAction(
+                                    Quickshell.env("HOME") + "/.config/hypr/scripts/hypridle.sh toggle")
+                            }
+
+                            ToolTile {
+                                glyph: "nightlight"
+                                label: "Night light"
+                                onTriggered: root.toggleAction(
+                                    "sleep 0.3; " + Quickshell.env("HOME")
+                                    + "/.config/ml4w/scripts/ml4w-toggle-hyprsunset")
+                            }
+
+                            ToolTile {
+                                readonly property string profile:
+                                    root.stats.tools && root.stats.tools.power_profile
+                                    ? root.stats.tools.power_profile : ""
+                                glyph: profile === "performance" ? "speed"
+                                     : profile === "power-saver" ? "eco" : "balance"
+                                label: "Power"
+                                detail: profile === "power-saver" ? "Saver"
+                                      : profile === "performance" ? "Performance"
+                                      : profile === "balanced" ? "Balanced" : "Power"
+                                // Cycles rather than opening a menu - there are
+                                // only ever three and a menu is more clicks.
+                                onTriggered: {
+                                    const next = profile === "power-saver" ? "balanced"
+                                               : profile === "balanced" ? "performance"
+                                               : "power-saver"
+                                    root.toggleAction("powerprofilesctl set " + next)
+                                }
+                            }
+                        }
+                    }
+
+                    // ---------- UPDATES ----------
+                    Section {
+                        title: "Updates"
+                        glyph: "system_update_alt"
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: 44
+                            radius: 8
+                            color: updatesMouse.containsMouse
+                                   ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                                   : Qt.rgba(Theme.on_surface.r, Theme.on_surface.g, Theme.on_surface.b, 0.07)
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                spacing: 10
+
+                                Glyph {
+                                    text: root.updateCount > 0 ? "download_for_offline" : "check_circle"
+                                    font.pixelSize: 18
+                                    color: root.updateCount > 0 ? Theme.tertiary : Theme.primary
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: root.updateCount > 0
+                                          ? root.updateCount + " package" + (root.updateCount === 1 ? "" : "s")
+                                            + " to update"
+                                          : "System is up to date"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 12
+                                    color: Theme.on_surface
+                                }
+
+                                Glyph {
+                                    text: "chevron_right"
+                                    font.pixelSize: 16
+                                    color: Theme.outline
+                                    visible: root.updateCount > 0
+                                }
+                            }
+
+                            MouseArea {
+                                id: updatesMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: root.updateCount > 0
+                                onClicked: root.launch(
+                                    Quickshell.env("HOME") + "/.config/ml4w/settings/installupdates.sh")
+                            }
+                        }
+
                     }
 
                     // ---------- TRAY ----------

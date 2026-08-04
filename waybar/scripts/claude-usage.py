@@ -335,11 +335,13 @@ def hint(error):
         # Both the access token and the refresh token have expired, which
         # happens after a long enough gap between Claude Code sessions. Nothing
         # here can recover it - the refresh token is the recovery mechanism.
-        return "Both tokens have expired. Run `claude` in a terminal once to log in again."
+        # `claude` alone just starts a session against the dead credentials and
+        # does not re-authenticate; /login is what actually replaces them.
+        return "Both tokens have expired. Run `claude /login` in a terminal to sign in again."
     if "429" in text:
         return "Rate limited by the usage endpoint. It will recover on its own."
     if "No such file" in text or "credentials" in text:
-        return "~/.claude/.credentials.json is missing. Log in with `claude` once."
+        return "~/.claude/.credentials.json is missing. Run `claude /login` in a terminal."
     return "Check ~/.claude/.credentials.json and network access."
 
 

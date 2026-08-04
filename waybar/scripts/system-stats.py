@@ -178,8 +178,44 @@ def load():
         return None
 
 
+def tools():
+    """State for the quick-action tiles that moved off the bar's tools drawer.
+
+    Both of these are cheap enough to re-read on the panel's normal tick. The
+    update count is deliberately NOT here - `checkupdates` hits the package
+    databases and takes seconds, so the panel polls that on its own slow timer.
+    """
+    state = {"idle_inhibited": None, "power_profile": None}
+
+    hypridle = os.path.expanduser("~/.config/hypr/scripts/hypridle.sh")
+    if os.path.exists(hypridle):
+        try:
+            # The script reports waybar-shaped JSON: class "active" means
+            # hypridle is running, i.e. the screen is NOT being kept awake.
+            payload = json.loads(run([hypridle, "status"]) or "{}")
+            state["idle_inhibited"] = payload.get("class") != "active"
+        except Exception:
+            pass
+
+    if shutil.which("powerprofilesctl"):
+        profile = run(["powerprofilesctl", "get"]).strip()
+        state["power_profile"] = profile or None
+
+    return state
+
+
+def run(args):
+    import subprocess
+    try:
+        out = subprocess.run(args, capture_output=True, text=True, timeout=4)
+        return out.stdout if out.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
 if __name__ == "__main__":
     print(json.dumps({
+        "tools": tools(),
         "cpu": cpu_percent(),
         "memory": memory(),
         "disk": disk(),
