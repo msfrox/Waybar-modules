@@ -1,0 +1,9 @@
+# local state
+*.bak
+*.bak-*
+*.orig
+__pycache__/
+.DS_Store
+
+# generated at runtime
+waybar/scripts/.cache/

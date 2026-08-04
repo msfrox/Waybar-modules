@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Strip machine-generated attribution from commit messages.
+#
+# Every commit in this repository is authored by its human maintainer. Tooling
+# that appends its own trailers or advertising footers gets them removed here,
+# so the log stays clean no matter which editor or assistant produced the text.
+#
+# Enabled by `git config core.hooksPath .githooks` (install.sh does this).
+
+msg_file="$1"
+[ -f "$msg_file" ] || exit 0
+
+tmp="$(mktemp)"
+
+# Drop:
+#   - Co-Authored-By / Co-authored-by trailers naming a tool or noreply address
+#   - "Generated with <tool>" advertising footers
+#   - Assistant-signature lines
+grep -viE \
+  -e '^[[:space:]]*Co-Authored-By:.*(claude|anthropic|copilot|gpt|gemini|cursor|codex|noreply@)' \
+  -e '^[[:space:]]*(🤖[[:space:]]*)?Generated with \[?(Claude|Cursor|Copilot|Codex|Gemini)' \
+  -e '^[[:space:]]*Assisted-By:' \
+  -e '^[[:space:]]*(🤖|✨)[[:space:]]*(Generated|Created|Written) (with|by)' \
+  "$msg_file" > "$tmp"
+
+# Collapse any trailing blank lines left behind by the removals.
+awk 'BEGIN{n=0} {lines[NR]=$0} END{last=NR; while(last>0 && lines[last] ~ /^[[:space:]]*$/) last--; for(i=1;i<=last;i++) print lines[i]}' \
+  "$tmp" > "$msg_file"
+
+rm -f "$tmp"
+exit 0
