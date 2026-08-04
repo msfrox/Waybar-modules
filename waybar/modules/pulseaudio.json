@@ -1,0 +1,26 @@
+// Audio module.
+//
+// The module itself stays a plain level readout - all the UI is in the
+// Quickshell AudioApp window it toggles. Right-click keeps pavucontrol for
+// per-app stream routing, which the panel deliberately does not duplicate.
+{
+  "pulseaudio": {
+    "format": "{icon}  {volume}%",
+    "format-bluetooth": "{volume}% {icon} {format_source}",
+    "format-bluetooth-muted": " {icon} {format_source}",
+    "format-muted": " {format_source}",
+    "format-source": "",
+    "format-source-muted": "",
+    "format-icons": {
+      "headphone": " ",
+      "hands-free": " ",
+      "headset": " ",
+      "phone": " ",
+      "portable": " ",
+      "car": " ",
+      "default": ["", "", ""]
+    },
+    "on-click": "qs ipc call audio toggle",
+    "on-click-right": "pavucontrol"
+  }
+}
