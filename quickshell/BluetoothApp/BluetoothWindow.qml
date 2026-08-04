@@ -280,7 +280,7 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
             }
         }
 
@@ -317,6 +317,10 @@ PanelWindow {
                     color: settingsMouse.containsMouse
                            ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
                            : "transparent"
+
+                    ToolTip.visible: settingsMouse.containsMouse
+                    ToolTip.text: "Open the full blueman manager"
+                    ToolTip.delay: 400
 
                     Glyph { anchors.centerIn: parent; text: "tune"; font.pixelSize: 17 }
 
@@ -400,6 +404,10 @@ PanelWindow {
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     color: scanMouse.containsMouse ? Theme.primary : Theme.outline
+
+                    ToolTip.visible: scanMouse.containsMouse
+                    ToolTip.text: "Start or stop scanning for nearby devices"
+                    ToolTip.delay: 400
 
                     MouseArea {
                         id: scanMouse

@@ -379,7 +379,7 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
             }
         }
 
@@ -409,6 +409,10 @@ PanelWindow {
                     color: settingsMouse.containsMouse
                            ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
                            : "transparent"
+
+                    ToolTip.visible: settingsMouse.containsMouse
+                    ToolTip.text: "Open pavucontrol for per-app stream routing"
+                    ToolTip.delay: 400
 
                     Glyph {
                         anchors.centerIn: parent
@@ -508,6 +512,10 @@ PanelWindow {
                     color: root.effects.bypassed ? Theme.outline
                          : bypassMouse.containsMouse ? Theme.primary : Theme.primary
 
+                    ToolTip.visible: bypassMouse.containsMouse
+                    ToolTip.text: "Bypass all Easy Effects processing"
+                    ToolTip.delay: 400
+
                     MouseArea {
                         id: bypassMouse
                         anchors.fill: parent
@@ -525,6 +533,10 @@ PanelWindow {
                     color: eeMouse.containsMouse
                            ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
                            : "transparent"
+
+                    ToolTip.visible: eeMouse.containsMouse
+                    ToolTip.text: "Open the Easy Effects window"
+                    ToolTip.delay: 400
 
                     Glyph { anchors.centerIn: parent; text: "graphic_eq"; font.pixelSize: 15 }
 

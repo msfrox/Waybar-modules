@@ -357,7 +357,7 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
             }
         }
 
@@ -388,6 +388,10 @@ PanelWindow {
                     color: refreshMouse.containsMouse
                            ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
                            : "transparent"
+
+                    ToolTip.visible: refreshMouse.containsMouse
+                    ToolTip.text: "Fetch the usage figures again now"
+                    ToolTip.delay: 400
 
                     Glyph {
                         anchors.centerIn: parent
@@ -537,6 +541,10 @@ PanelWindow {
                     font.pixelSize: 12
                     color: breakdownMouse.containsMouse ? Theme.primary : Theme.on_surface
                     leftPadding: 8
+
+                    ToolTip.visible: breakdownMouse.containsMouse
+                    ToolTip.text: "Open ccusage weekly --breakdown in a terminal"
+                    ToolTip.delay: 400
 
                     MouseArea {
                         id: breakdownMouse

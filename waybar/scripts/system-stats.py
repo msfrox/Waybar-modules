@@ -201,6 +201,25 @@ def tools():
         profile = run(["powerprofilesctl", "get"]).strip()
         state["power_profile"] = profile or None
 
+    # The four toggles swaync's own buttons-grid carries, so the Control Center
+    # is a superset of the panel it replaces on the bar.
+    if shutil.which("nmcli"):
+        state["wifi_enabled"] = run(["nmcli", "radio", "wifi"]).strip() == "enabled"
+
+    if shutil.which("rfkill"):
+        # "Soft blocked: yes" on every bluetooth line means the radio is off.
+        lines = [l for l in run(["rfkill", "list", "bluetooth"]).splitlines()
+                 if "Soft blocked" in l]
+        state["bluetooth_enabled"] = bool(lines) and not all("yes" in l for l in lines)
+
+    if shutil.which("wpctl"):
+        state["muted"] = "[MUTED]" in run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+
+    if shutil.which("swaync-client"):
+        state["dnd"] = run(["swaync-client", "-D"]).strip() == "true"
+        count = run(["swaync-client", "-c"]).strip()
+        state["notifications"] = int(count) if count.isdigit() else 0
+
     return state
 
 

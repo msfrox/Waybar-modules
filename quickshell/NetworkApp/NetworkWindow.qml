@@ -266,7 +266,7 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
             }
         }
 
@@ -303,6 +303,10 @@ PanelWindow {
                     color: settingsMouse.containsMouse
                            ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
                            : "transparent"
+
+                    ToolTip.visible: settingsMouse.containsMouse
+                    ToolTip.text: "Open nm-connection-editor"
+                    ToolTip.delay: 400
 
                     Glyph { anchors.centerIn: parent; text: "tune"; font.pixelSize: 17 }
 
@@ -384,6 +388,10 @@ PanelWindow {
                     font.pixelSize: 11
                     color: rescan.containsMouse ? Theme.primary : Theme.outline
                     visible: Networking.wifiEnabled
+
+                    ToolTip.visible: rescan.containsMouse
+                    ToolTip.text: "Scan again for nearby networks"
+                    ToolTip.delay: 400
 
                     MouseArea {
                         id: rescan
@@ -639,6 +647,10 @@ PanelWindow {
                     font.family: Theme.fontFamily
                     font.pixelSize: 11
                     color: tsMouse.containsMouse ? Theme.primary : Theme.outline
+
+                    ToolTip.visible: tsMouse.containsMouse
+                    ToolTip.text: "Bring the Tailscale connection up or down"
+                    ToolTip.delay: 400
 
                     MouseArea {
                         id: tsMouse

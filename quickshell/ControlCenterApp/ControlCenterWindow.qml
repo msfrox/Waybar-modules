@@ -197,6 +197,12 @@ PanelWindow {
         return mins + "m"
     }
 
+    // stats.tools is undefined until the first read, and every tile binds to it
+    // - one accessor beats repeating the guard at a dozen call sites.
+    function tool(key) {
+        return root.stats.tools ? root.stats.tools[key] : undefined
+    }
+
     function loadColor(percent) {
         if (percent >= 90) return Theme.error
         if (percent >= 70) return Theme.tertiary
@@ -343,8 +349,15 @@ PanelWindow {
         required property string glyph
         required property string label
         property string detail: ""
+        property string hint: ""
         property bool active: false
         signal triggered
+
+        // The tile shows `detail` (the current state) rather than `label`, so
+        // without this there is nowhere the tile says what it *is*.
+        ToolTip.visible: tileMouse.containsMouse && tile.hint !== ""
+        ToolTip.text: tile.hint
+        ToolTip.delay: 400
 
         Layout.fillWidth: true
         implicitHeight: 56
@@ -500,7 +513,7 @@ PanelWindow {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
             }
         }
 
@@ -541,6 +554,10 @@ PanelWindow {
                     color: powerMouse.containsMouse
                            ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.18)
                            : "transparent"
+
+                    ToolTip.visible: powerMouse.containsMouse
+                    ToolTip.text: "Lock, suspend, log out, reboot or shut down"
+                    ToolTip.delay: 400
 
                     Glyph {
                         anchors.centerIn: parent
@@ -763,9 +780,58 @@ PanelWindow {
                             rowSpacing: 6
                             columnSpacing: 6
 
+                            // The first four mirror swaync's own buttons-grid,
+                            // so the Control Center is a superset of the panel
+                            // whose button it replaced on the bar.
+                            ToolTile {
+                                glyph: root.tool("wifi_enabled") ? "wifi" : "wifi_off"
+                                label: "Wi-Fi"
+                                detail: root.tool("wifi_enabled") ? "Wi-Fi" : "Wi-Fi off"
+                                active: !!root.tool("wifi_enabled")
+                                hint: "Toggle the Wi-Fi radio"
+                                onTriggered: root.toggleAction(
+                                    "nmcli radio wifi " + (root.tool("wifi_enabled") ? "off" : "on"))
+                            }
+
+                            ToolTile {
+                                glyph: root.tool("bluetooth_enabled") ? "bluetooth" : "bluetooth_disabled"
+                                label: "Bluetooth"
+                                detail: root.tool("bluetooth_enabled") ? "Bluetooth" : "BT off"
+                                active: !!root.tool("bluetooth_enabled")
+                                hint: "Toggle the Bluetooth radio (rfkill)"
+                                onTriggered: root.toggleAction("rfkill toggle bluetooth")
+                            }
+
+                            ToolTile {
+                                glyph: root.tool("muted") ? "volume_off" : "volume_up"
+                                label: "Mute"
+                                detail: root.tool("muted") ? "Muted" : "Sound on"
+                                active: !!root.tool("muted")
+                                hint: "Mute or unmute the default output"
+                                onTriggered: root.toggleAction(
+                                    "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")
+                            }
+
+                            ToolTile {
+                                glyph: root.tool("dnd") ? "notifications_off" : "notifications"
+                                label: "Do not disturb"
+                                detail: root.tool("dnd") ? "DND on" : "Notify"
+                                active: !!root.tool("dnd")
+                                hint: "Silence notifications (swaync do-not-disturb)"
+                                onTriggered: root.toggleAction("swaync-client -d -sw")
+                            }
+
+                            ToolTile {
+                                glyph: "lock"
+                                label: "Lock"
+                                hint: "Lock the screen now (hyprlock)"
+                                onTriggered: root.launch("hyprlock")
+                            }
+
                             ToolTile {
                                 glyph: "content_paste"
                                 label: "Clipboard"
+                                hint: "Clipboard history (cliphist)"
                                 onTriggered: root.launch(
                                     Quickshell.env("HOME") + "/.config/ml4w/scripts/ml4w-cliphist")
                             }
@@ -774,6 +840,7 @@ PanelWindow {
                                 glyph: root.stats.tools && root.stats.tools.idle_inhibited
                                        ? "coffee" : "bedtime"
                                 label: "Keep awake"
+                                hint: "Stop the screen locking and sleeping (hypridle)"
                                 detail: root.stats.tools && root.stats.tools.idle_inhibited
                                         ? "Awake" : "Auto-sleep"
                                 active: !!(root.stats.tools && root.stats.tools.idle_inhibited)
@@ -784,6 +851,7 @@ PanelWindow {
                             ToolTile {
                                 glyph: "nightlight"
                                 label: "Night light"
+                                hint: "Toggle the warm screen shader (hyprsunset)"
                                 onTriggered: root.toggleAction(
                                     "sleep 0.3; " + Quickshell.env("HOME")
                                     + "/.config/ml4w/scripts/ml4w-toggle-hyprsunset")
@@ -796,6 +864,7 @@ PanelWindow {
                                 glyph: profile === "performance" ? "speed"
                                      : profile === "power-saver" ? "eco" : "balance"
                                 label: "Power"
+                                hint: "Cycle power profile: saver, balanced, performance"
                                 detail: profile === "power-saver" ? "Saver"
                                       : profile === "performance" ? "Performance"
                                       : profile === "balanced" ? "Balanced" : "Power"
@@ -806,6 +875,74 @@ PanelWindow {
                                                : profile === "balanced" ? "performance"
                                                : "power-saver"
                                     root.toggleAction("powerprofilesctl set " + next)
+                                }
+                            }
+                        }
+                    }
+
+                    // ---------- NOTIFICATIONS ----------
+                    // swaync stays the notification daemon - only one process
+                    // can own org.freedesktop.Notifications, and reimplementing
+                    // a daemon to move a button is the wrong trade. This is a
+                    // front end over `swaync-client`, which is exactly what the
+                    // bar's custom/notification module was.
+                    Section {
+                        title: "Notifications"
+                        glyph: "notifications"
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: 44
+                            radius: 8
+                            color: notifMouse.containsMouse
+                                   ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                                   : Qt.rgba(Theme.on_surface.r, Theme.on_surface.g, Theme.on_surface.b, 0.07)
+
+                            ToolTip.visible: notifMouse.containsMouse
+                            ToolTip.text: "Open the notification panel"
+                            ToolTip.delay: 400
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                spacing: 10
+
+                                Glyph {
+                                    text: root.tool("dnd") ? "notifications_off"
+                                        : root.tool("notifications") > 0 ? "notifications_active"
+                                        : "notifications_none"
+                                    font.pixelSize: 18
+                                    color: root.tool("dnd") ? Theme.outline
+                                         : root.tool("notifications") > 0 ? Theme.tertiary
+                                         : Theme.primary
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: {
+                                        const n = root.tool("notifications") || 0
+                                        if (n === 0) return root.tool("dnd")
+                                                     ? "No notifications · DND on" : "No notifications"
+                                        return n + " notification" + (n === 1 ? "" : "s")
+                                               + (root.tool("dnd") ? " · DND on" : "")
+                                    }
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 12
+                                    color: Theme.on_surface
+                                }
+
+                                Glyph { text: "chevron_right"; font.pixelSize: 16; color: Theme.outline }
+                            }
+
+                            MouseArea {
+                                id: notifMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root.isOpen = false
+                                    Quickshell.execDetached(["swaync-client", "-t", "-sw"])
                                 }
                             }
                         }
@@ -823,6 +960,10 @@ PanelWindow {
                             color: updatesMouse.containsMouse
                                    ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
                                    : Qt.rgba(Theme.on_surface.r, Theme.on_surface.g, Theme.on_surface.b, 0.07)
+
+                            ToolTip.visible: updatesMouse.containsMouse && root.updateCount > 0
+                            ToolTip.text: "Install pending package updates"
+                            ToolTip.delay: 400
 
                             RowLayout {
                                 anchors.fill: parent

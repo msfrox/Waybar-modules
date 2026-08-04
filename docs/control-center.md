@@ -24,7 +24,8 @@ keeps one button.
 |---|---|
 | **Calendar** | month grid, independent of the bar's clock popup |
 | **System** | `waybar/scripts/system-stats.py` — CPU, memory, swap, disk, temperature, network rates, uptime, load |
-| **Quick actions** | clipboard, keep-awake, night light, power profile — the bar's old `group/tools` |
+| **Quick actions** | Wi-Fi, Bluetooth, mute, do-not-disturb, lock, clipboard, keep-awake, night light, power profile — the bar's old `group/tools` plus the four toggles from swaync's own buttons-grid |
+| **Notifications** | count, DND state and the panel toggle, over `swaync-client` |
 | **Updates** | `ml4w-check-system-updates`, on its own 30-minute timer |
 | **Tray** | `Quickshell.Services.SystemTray` — real StatusNotifierItem icons, `activate()` on left click, the item's own DBus menu on right |
 
@@ -95,3 +96,17 @@ from the child (`onImplicitHeightChanged: root.bodyHeight = implicitHeight`) ins
 **Bind a `ScrollView`'s content width to the ScrollView by id.** `parent.parent` inside it
 resolves to the internal `Flickable`, whose `availableWidth` is not the one that matters —
 the column sizes to its own content and hugs the left edge.
+
+**swaync stays the notification daemon.** Only one process can own
+`org.freedesktop.Notifications`, so moving the bar's notification button here means a front
+end over `swaync-client` (`-c` count, `-D` DND state, `-d` toggle, `-t` open panel) — which
+is exactly what `custom/notification` was. Reimplementing a daemon to relocate a button is
+the wrong trade.
+
+**Popup transparency matches swaync's**, which defines
+`@blur_background: rgba(bg, 0.3)` in its Matugen-generated `colors.css`. Every Quickshell
+card here uses the same 0.30 alpha so the two panels look like the same system.
+
+**Tooltips use the `ToolTip` attached property**, gated on the MouseArea's `containsMouse`.
+The tiles show their *current state* rather than their name, so without a tooltip there is
+nowhere a tile says what it actually is.
