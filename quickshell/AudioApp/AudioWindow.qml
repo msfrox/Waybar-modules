@@ -325,7 +325,6 @@ PanelWindow {
             id: mainBgRect
             anchors.fill: parent
             radius: 10
-            opacity: 0.95
 
             gradient: Gradient {
                 orientation: Gradient.Vertical
@@ -333,11 +332,18 @@ PanelWindow {
                 GradientStop { position: 1.0; color: Theme.on_primary }
             }
 
+            // Frosted glass. The translucency has to be in this fill's alpha
+            // and nowhere else: putting `opacity` on the card would fade the
+            // text and the border along with the background, and Hyprland's
+            // layer rule cannot make an opaque surface see-through. The blur
+            // behind it comes from the "quickshell-frosted-glass" rule in
+            // ~/.config/hypr/shehan/theming.lua - without that rule this just
+            // looks like flat transparency.
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: 2
                 radius: parent.radius - anchors.margins
-                color: Theme.background
+                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.62)
             }
         }
 
