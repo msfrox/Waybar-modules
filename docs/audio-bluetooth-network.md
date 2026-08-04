@@ -34,6 +34,19 @@ Output and input sliders with the icon as the mute toggle, a radio list of sinks
 sources, and a gear to `pavucontrol`. Per-app stream routing is deliberately not
 duplicated — that is what right-click is for.
 
+It also carries an **Easy Effects** block: active/bypassed state, a one-click bypass
+toggle, and the output preset list with the current one marked.
+
+EasyEffects is a PipeWire filter chain, so the device list above shows it as a plain
+virtual sink named `Easy Effects Sink` with no indication of what it is or which preset it
+is running — all of that is only reachable through its own CLI
+(`-p` list, `-a output` current, `-l <name>` load, `-b 3` bypass state,
+`--bypass-toggle`), which `waybar/scripts/easyeffects-status.py` wraps.
+
+The toggle bypasses rather than quits: quitting drops the filter chain out of the graph
+and moves every stream, which is a far bigger hammer than "let me hear it without the
+effects for a second".
+
 Two things about `Quickshell.Services.Pipewire` cost real time:
 
 **Filter on the constant members only.** `audio`, `isSink` and `isStream` are declared

@@ -37,22 +37,22 @@ Shared conventions for every panel added here, taken from the existing ML4W wind
 
 ## Phases
 
-- [ ] **Phase 0 — repo groundwork.** Scaffold, licence, hooks, install script, first push.
-- [ ] **Phase 1 — calendar to bottom-right.** Re-anchor `CalendarWindow` from
+- [x] **Phase 0 — repo groundwork.** ✅ Scaffold, licence, hooks, install script, first push.
+- [x] **Phase 1 — calendar to bottom-right.** ✅ Re-anchor `CalendarWindow` from
       top-centre to bottom-right, above the bar. One-file change; do it first because it
       confirms the anchor/margin maths every later panel depends on.
-- [ ] **Phase 2 — app launcher button.** Move `custom/appmenu` from `modules-left` to
+- [x] **Phase 2 — app launcher button.** ✅ Move `custom/appmenu` from `modules-left` to
       `modules-center`, drop the pill, give it a distinct launcher icon.
-- [ ] **Phase 3 — audio popup.** New `AudioApp` Quickshell window driven by
+- [x] **Phase 3 — audio popup.** ✅ (plus bluetooth + network, unplanned) New `AudioApp` Quickshell window driven by
       `Quickshell.Services.Pipewire`: output slider, input slider, device switching,
       per-app streams. `pulseaudio`'s `on-click` opens it; `pavucontrol` moves to
       right-click.
-- [ ] **Phase 4 — Claude usage dial.** Replace the glyph badge with a rendered dial —
+- [x] **Phase 4 — Claude usage dial.** ✅ Replace the glyph badge with a rendered dial —
       weekly window as the ring, the 5-hour session as the pie fill in 10% steps — served
       to Waybar's `image` module. Add a `ClaudeUsageApp` popup carrying the options
       YapCap exposes (panel style, used vs. remaining, relative vs. absolute reset,
       refresh interval).
-- [ ] **Phase 5 — Control Center.** New `ControlCenterApp` side panel with a section
+- [x] **Phase 5 — Control Center.** ✅ New `ControlCenterApp` side panel with a section
       framework: calendar, system usage, system tray (`Quickshell.Services.SystemTray`),
       quick toggles. One Waybar button opens it. Groundwork first — migrating individual
       modules into it is incremental afterwards.
@@ -84,3 +84,21 @@ to shed.
 - The Claude usage module's `font-size` used to set the whole bar's height — Waybar
   measures the bar from its tallest child. Moving it to an `image` module removes that
   coupling, but check `hyprctl monitors -j` → `reserved[3]` after the change regardless.
+
+## Done, and what changed along the way
+
+All six phases shipped. Three things were not in the original plan and were added
+mid-flight at the owner's request:
+
+- **Bluetooth and network panels.** Once the audio panel existed, the case for keeping
+  blueman's and nm-applet's tray menus scraped through rofi collapsed — those broke
+  whenever the tray icon was closed. Both applets are now masked.
+- **Frosted glass.** One Hyprland layer rule on the `quickshell` namespace, plus alpha in
+  each card's fill.
+- **Matugen at Quickshell startup.** `Theme.qml`'s palette loader was commented out, so
+  every Quickshell window came up on a hardcoded fallback palette until the next wallpaper
+  change. That was the actual cause of "the calendar doesn't match the theme".
+
+## Next
+
+See [BACKLOG.md](BACKLOG.md).

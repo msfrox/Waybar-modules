@@ -57,7 +57,43 @@ PanelWindow {
     property bool showWindow: false
     visible: showWindow
 
-    onIsOpenChanged: if (isOpen) showWindow = true
+    onIsOpenChanged: {
+        if (isOpen) {
+            showWindow = true
+            reloadEffects()
+        }
+    }
+
+    // --- EASYEFFECTS ---
+    //
+    // EasyEffects is a PipeWire filter chain, so the device list above shows it
+    // as a plain virtual sink called "Easy Effects Sink" with no indication of
+    // what it is or which preset it is running. All of that is only reachable
+    // through its own CLI, which the helper script wraps.
+    property var effects: ({})
+
+    Process {
+        id: effectsProc
+        command: [Quickshell.env("HOME") + "/.config/waybar/scripts/easyeffects-status.py"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.effects = JSON.parse(this.text) } catch (e) { root.effects = {} }
+            }
+        }
+    }
+
+    function reloadEffects() {
+        if (!effectsProc.running) effectsProc.running = true
+    }
+
+    // Applying a preset and toggling bypass both change what the next read
+    // reports, so re-read once the command has exited rather than guessing.
+    Process { id: effectsAction; onExited: root.reloadEffects() }
+
+    function effectsCommand(args) {
+        effectsAction.command = args
+        effectsAction.running = true
+    }
 
     Behavior on currentBottomMargin {
         NumberAnimation {
@@ -448,6 +484,89 @@ PanelWindow {
                         node: modelData
                         selected: root.source && modelData.id === root.source.id
                         onPicked: Pipewire.preferredDefaultAudioSource = modelData
+                    }
+                }
+            }
+
+            // --- EASYEFFECTS ---
+            Divider { visible: !!root.effects.available }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: !!root.effects.available
+                spacing: 10
+
+                SectionLabel { Layout.fillWidth: true; text: "Easy Effects" }
+
+                // Bypass, not quit: quitting drops the filter chain out of the
+                // graph and moves every stream, which is a much bigger hammer
+                // than "let me hear it without the effects for a second".
+                Text {
+                    text: root.effects.bypassed ? "Bypassed" : "Active"
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    color: root.effects.bypassed ? Theme.outline
+                         : bypassMouse.containsMouse ? Theme.primary : Theme.primary
+
+                    MouseArea {
+                        id: bypassMouse
+                        anchors.fill: parent
+                        anchors.margins: -6
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.effectsCommand(["easyeffects", "--bypass-toggle"])
+                    }
+                }
+
+                Rectangle {
+                    implicitWidth: 24
+                    implicitHeight: 24
+                    radius: 6
+                    color: eeMouse.containsMouse
+                           ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                           : "transparent"
+
+                    Glyph { anchors.centerIn: parent; text: "graphic_eq"; font.pixelSize: 15 }
+
+                    MouseArea {
+                        id: eeMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            Quickshell.execDetached(["easyeffects"])
+                            root.isOpen = false
+                        }
+                    }
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: !!root.effects.available && !root.effects.running
+                text: "Not running — effects are not in the audio graph"
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                color: Theme.outline
+                leftPadding: 8
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+                visible: !!root.effects.available && !!root.effects.running
+
+                Repeater {
+                    model: root.effects.output_presets || []
+
+                    DeviceRow {
+                        required property var modelData
+                        // DeviceRow labels itself from a PipeWire node; here the
+                        // name is already the label, so hand it a stand-in with
+                        // the shape the component reads.
+                        node: ({ nickname: modelData })
+                        selected: modelData === root.effects.output_preset
+                        onPicked: root.effectsCommand(["easyeffects", "-l", modelData])
                     }
                 }
             }
