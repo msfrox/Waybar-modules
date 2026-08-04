@@ -850,15 +850,16 @@ PanelWindow {
                                     ? root.humanBytes(root.stats.memory.swap_used) : ""
                         }
 
-                        // Two pills per row: four across ~380px left each about
-                        // 90px, and "118 KB/s" plus its icon does not fit in
-                        // that, so the values ran into each other. Down and Up
-                        // share a row so the two halves of the same reading sit
-                        // side by side.
+                        // Three per row. Four across ~380px left each about 90px
+                        // and "118 KB/s" plus its icon ran into its neighbour;
+                        // three is the most that still fits a rate string.
                         GridLayout {
                             Layout.fillWidth: true
                             Layout.topMargin: 4
-                            columns: 2
+                            // Three wide: Down and Up still land side by side on
+                            // the first row, and the two fans fill the second
+                            // instead of leaving a hole.
+                            columns: 3
                             rowSpacing: 6
                             columnSpacing: 6
 

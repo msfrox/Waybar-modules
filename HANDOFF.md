@@ -48,5 +48,17 @@ Backends in `waybar/scripts/`: `claude-usage.py`, `network-details.py`, `system-
 
 ## Known-not-done
 
-`BACKLOG.md`. The largest items are a replacement secret/pairing agent, per-app volume
-streams, and migrating notifications and media into the Control Center.
+See `BACKLOG.md` — it now has a **"Next session — queued, in order"** list. Top of it:
+
+1. **The notification list itself** in the Control Center. Today it shows the count, DND
+   state and a button to swaync's own panel. Showing the notifications means Quickshell
+   must become the notification daemon: only one process can own
+   `org.freedesktop.Notifications`, and swaync exposes no way to enumerate its list. That
+   is `NotificationServer` for the list and actions, toast popups to replace the ones
+   swaync draws, and disabling swaync — a phase, not a patch.
+2. Media player section (lift ML4W's sidebar Mpris bindings), then drop `custom/nowplaying`.
+3. Light/dark toggle, colour picker and screenshot as quick actions (commands already exist
+   in ML4W's sidebar).
+
+Also outstanding: a replacement NetworkManager secret agent / BlueZ pairing agent, and
+per-app volume streams.

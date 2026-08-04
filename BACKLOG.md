@@ -34,6 +34,32 @@ Ideas parked rather than built, so they stay out of the working context.
   has no account concept at all.
 - Other providers (Codex, Cursor, Gemini) — same shape, different endpoint.
 
+## Next session — queued, in order
+
+1. **Notification list in the Control Center** (the big one, see above). Blocked on making
+   Quickshell the notification daemon.
+2. **Media player from ML4W's sidebar.** `SidebarWindow.qml` already binds
+   `Quickshell.Services.Mpris`. Worth lifting into a Control Center section and then
+   dropping `custom/nowplaying` from the bar.
+3. **Three more quick actions from ML4W's sidebar**: light/dark toggle, colour picker,
+   screenshot. All three are already wired there — copy the commands, not the widgets.
+
+### On reusing ML4W's sidebar widgets
+
+Asked whether the brightness sliders needed rebuilding at all. Answer: the *internal* one
+did not, and effectively was not — ML4W's sidebar slider shells out to `brightnessctl`
+through a `Process`, which is exactly the mechanism used here.
+
+What could not be reused is the **code**: `SidebarWindow.qml` is a single 1021-line file
+with its sliders written inline, not extracted as importable components. "Using ML4W's
+slider" would mean copying the same ~40 lines out of it — which is what happened, plus a
+debounce and a floor at 1%. The genuinely new part is the **external** slider: the sidebar
+has no DDC/CI control at all.
+
+Same applies to the media player and the three toggles below — lift the *bindings and
+commands*, not the widgets. And note ML4W owns that file, so anything left depending on it
+breaks on their next update.
+
 ## Housekeeping
 
 - The window chrome (layer config, slide animation, focus grab, IPC) is duplicated across
