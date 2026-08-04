@@ -18,13 +18,22 @@ ML4W-specific beyond the install paths.
 
 | Module | Waybar side | Panel side |
 |---|---|---|
-| **Audio** | `pulseaudio` with a click handler | Volume + input sliders, per-device output/input switching, media controls |
-| **Claude usage** | `image` module rendering a two-window usage dial | Usage breakdown, display options, refresh controls |
-| **Control Center** | one button | Sliding side panel — calendar, system usage, system tray, quick toggles |
-| **Calendar** | `clock` with a click handler | Month view, repositionable |
-| **App launcher** | `custom/appmenu` | Hands off to an external launcher |
+| **Audio** | `pulseaudio` | Output/input sliders and mute, per-device switching, Easy Effects preset control |
+| **Bluetooth** | `bluetooth` | Adapter toggle, connect/pair/forget, device battery — native BlueZ, no tray applet |
+| **Network** | `network` | Wi-Fi list with inline PSK entry, connection details (IP, link rate, frequency), Tailscale status |
+| **Claude usage** | `image` module rendering a two-window dial | Usage breakdown and display options |
+| **Control Center** | one button | Calendar, live system usage, quick actions, pending updates, the system tray |
 
-Each is documented under [`docs/`](docs/).
+Docs: [audio / bluetooth / network](docs/audio-bluetooth-network.md) ·
+[Claude usage](docs/claude-usage.md) · [Control Center](docs/control-center.md) ·
+[patches to ML4W's files](docs/quickshell-patches.md)
+
+### The usage dial
+
+Waybar modules are text-only, so a two-window reading had nowhere to go. This one is drawn
+and served through Waybar's `image` module: the **outer ring** is the 7-day window, the
+**inner pie** is the current 5-hour session in 10% steps. Colours come from Matugen, so it
+follows the wallpaper.
 
 ## Install
 
@@ -45,6 +54,7 @@ because they are yours.
 - Waybar 0.15+
 - Quickshell 0.3+
 - Python 3 with `pycairo` (usage dial rendering)
+- Optional: `nmcli` for connection details, `tailscale`, `easyeffects`
 - A Nerd Font and Material Symbols for the glyphs
 
 ## Licence
