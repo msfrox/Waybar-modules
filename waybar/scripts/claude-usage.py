@@ -81,6 +81,38 @@ def load_settings():
     return settings
 
 
+def save_settings(pairs):
+    """Apply `--set key=value ...` and persist.
+
+    The settings panel is QML, which would otherwise have to hand-assemble this
+    JSON and shell-quote it. Keeping the write here means there is exactly one
+    piece of code that knows the file's shape, and it is the one that also
+    reads it.
+    """
+    settings = load_settings()
+    for pair in pairs:
+        key, _, value = pair.partition("=")
+        if key not in DEFAULTS:
+            continue
+        default = DEFAULTS[key]
+        if isinstance(default, bool):
+            settings[key] = value.lower() in ("1", "true", "yes")
+        elif isinstance(default, int):
+            try:
+                settings[key] = int(value)
+            except ValueError:
+                continue
+        else:
+            settings[key] = value
+
+    os.makedirs(os.path.dirname(SETTINGS), exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(SETTINGS))
+    with os.fdopen(fd, "w") as f:
+        json.dump(settings, f, indent=2)
+    os.replace(tmp, SETTINGS)
+    return settings
+
+
 def hex_to_rgb(value, fallback=(0.5, 0.5, 0.5)):
     try:
         value = value.lstrip("#")
@@ -291,7 +323,30 @@ def bar(pct, width=10):
     return "█" * filled + "░" * (width - filled)
 
 
+def hint(error):
+    """Turn the raw failure into the thing you actually have to do about it.
+
+    An empty dial with a stack trace in the tooltip is only marginally better
+    than an empty dial, and these three cases cover essentially every failure
+    this script has.
+    """
+    text = str(error)
+    if "invalid_grant" in text or "400" in text:
+        # Both the access token and the refresh token have expired, which
+        # happens after a long enough gap between Claude Code sessions. Nothing
+        # here can recover it - the refresh token is the recovery mechanism.
+        return "Both tokens have expired. Run `claude` in a terminal once to log in again."
+    if "429" in text:
+        return "Rate limited by the usage endpoint. It will recover on its own."
+    if "No such file" in text or "credentials" in text:
+        return "~/.claude/.credentials.json is missing. Log in with `claude` once."
+    return "Check ~/.claude/.credentials.json and network access."
+
+
 def main():
+    if "--set" in sys.argv:
+        save_settings(sys.argv[sys.argv.index("--set") + 1:])
+
     settings = load_settings()
     palette = load_palette()
 
@@ -321,6 +376,7 @@ def main():
                 "block_resets_at": five.get("resets_at"),
                 "week_resets_at": seven.get("resets_at"),
                 "error": None,
+                "error_hint": None,
             }
             write_state(state)
         except Exception as exc:
@@ -330,6 +386,10 @@ def main():
                               "week_pct": 0, "block_resets_at": None,
                               "week_resets_at": None}
             state["error"] = str(exc)
+            # Stored, not just formatted into the tooltip, so the Quickshell
+            # panel shows the same actionable line without duplicating the
+            # mapping.
+            state["error_hint"] = hint(exc)
             write_state(state)
 
     block_pct = state["block_pct"]
@@ -342,7 +402,7 @@ def main():
     word = "used" if settings["usage_amount_format"] == "used" else "left"
 
     if state.get("error"):
-        tooltip = f"Claude usage unavailable: {state['error']}"
+        tooltip = f"Claude usage unavailable\n{state['error']}\n\n{hint(state['error'])}"
     else:
         lines = [
             "󰚩 Claude Code Usage",
