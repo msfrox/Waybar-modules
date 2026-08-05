@@ -22,8 +22,20 @@ Singleton {
     // The server owns the objects; `trackedNotifications` is its live model and
     // the only thing keeping a Notification alive. Reversed here because the
     // server appends and the panel wants newest first.
-    readonly property list<var> list: [...server.trackedNotifications.values].reverse()
-    readonly property int count: server.trackedNotifications.values.length
+    readonly property list<var> live: [...server.trackedNotifications.values].reverse()
+
+    // Notifications from before the last restart, read back from disk. These are
+    // PLAIN OBJECTS, not Notification instances: a NotificationServer has no way
+    // to re-inject one, so history can only ever be a snapshot. They carry the
+    // same property names so NotificationEntry renders both without branching,
+    // plus `historic: true` so the few places that DO have to branch can.
+    //
+    // What a historic entry cannot do is invoke an action — the sending app is
+    // long gone and the id is stale — so they are saved with `actions: []`.
+    property list<var> history: []
+
+    readonly property list<var> list: [...root.live, ...root.history]
+    readonly property int count: root.live.length + root.history.length
 
     // Notifications currently showing as a toast. Separate from `list`: a toast
     // disappearing must not clear the panel entry, and a panel entry dismissed
@@ -41,7 +53,9 @@ Singleton {
 
     function ageTextFor(n: var): string {
         root.clockTick // re-evaluate on every tick
-        const at = root.arrivals[n.id]
+        // A historic entry carries its own timestamp; a live one is looked up in
+        // `arrivals`, because a Notification has no timestamp of its own.
+        const at = n.historic ? n.at : root.arrivals[n.id]
         if (at === undefined) return ""
         const secs = Math.floor((Date.now() - at) / 1000)
         if (secs < 60) return "now"
@@ -68,9 +82,17 @@ Singleton {
         // dismiss() mutates trackedNotifications, so iterate over a copy.
         for (const n of [...server.trackedNotifications.values]) n.dismiss()
         root.toasts = []
+        root.history = []
+        root.persist()
     }
 
     function dismiss(n: var): void {
+        if (n.historic) {
+            // Nothing to tell the bus about — just forget it.
+            root.history = root.history.filter(h => h.at !== n.at || h.summary !== n.summary)
+            root.persist()
+            return
+        }
         root.dropToast(n)
         n.dismiss()
     }
@@ -126,6 +148,81 @@ Singleton {
                 return
             }
             root.toasts = [...root.toasts, notification]
+        }
+    }
+
+    // --- HISTORY ACROSS RESTARTS ---------------------------------------------
+    // Kept in $XDG_CACHE, not $XDG_CONFIG: it is regenerable state, and losing it
+    // costs nothing. Capped, because an uncapped list is a slow leak that only
+    // shows up months later as a slow panel.
+    readonly property int historyLimit: 50
+
+    // Guard against the startup race: `live` changes as the server comes up,
+    // which fires the debounce, and a persist() that runs before the file has
+    // been read would write an empty array over the real history.
+    property bool historyLoaded: false
+
+    function snapshotOf(n: var): var {
+        return {
+            historic: true,
+            at: root.arrivals[n.id] !== undefined ? root.arrivals[n.id] : Date.now(),
+            appName: n.appName,
+            appIcon: n.appIcon,
+            summary: n.summary,
+            body: n.body,
+            urgency: n.urgency,
+            image: n.image,
+            // Deliberately empty — see the `history` comment above.
+            actions: []
+        }
+    }
+
+    function persist(): void {
+        if (!root.historyLoaded) return
+
+        // Live notifications are snapshotted too. If the shell dies without
+        // warning, whatever was on screen is what should come back.
+        const snapshot = [
+            ...root.live.filter(n => !n.transient).map(n => root.snapshotOf(n)),
+            ...root.history
+        ].slice(0, root.historyLimit)
+
+        historyFile.setText(JSON.stringify(snapshot))
+    }
+
+    // Debounced: a burst of notifications would otherwise rewrite the file once
+    // per notification, and `live` also churns on every dismiss.
+    Timer {
+        id: persistDebounce
+        interval: 1500
+        repeat: false
+        onTriggered: root.persist()
+    }
+
+    onLiveChanged: persistDebounce.restart()
+
+    FileView {
+        id: historyFile
+        path: Quickshell.env("HOME") + "/.cache/waybar-control-center/notification-history.json"
+        // Write to a temp file and rename, so a poweroff mid-write leaves the
+        // previous history intact rather than a truncated file.
+        atomicWrites: true
+        // No watchChanges: this file has exactly one writer, and watching it would
+        // feed every write straight back in as a load.
+        onLoaded: {
+            try {
+                const parsed = JSON.parse(historyFile.text())
+                root.history = Array.isArray(parsed) ? parsed : []
+            } catch (e) {
+                // A truncated write from a hard poweroff is not worth a crash.
+                root.history = []
+            }
+            root.historyLoaded = true
+        }
+        // No file yet is the normal first-run case, not an error.
+        onLoadFailed: (error) => {
+            root.history = []
+            root.historyLoaded = true
         }
     }
 

@@ -257,6 +257,37 @@ PanelWindow {
         return Theme.primary
     }
 
+    // --- SECTION COLLAPSE STATE ---
+    // Keyed by title rather than index: sections get reordered in this file
+    // far more often than the persisted file gets touched, and a title
+    // survives a reorder where an index wouldn't.
+    property var collapseState: ({})
+
+    function setSectionCollapsed(title, collapsed) {
+        const next = Object.assign({}, root.collapseState)
+        next[title] = collapsed
+        root.collapseState = next
+        collapseSettings.collapsed = next
+        collapseFile.writeAdapter()
+    }
+
+    FileView {
+        id: collapseFile
+        path: Quickshell.env("HOME") + "/.config/waybar-control-center/control-center.json"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: root.collapseState = collapseSettings.collapsed
+
+        // No file yet is the normal first-run case, not an error - every
+        // section just keeps its collapsed: false default below.
+        onLoadFailed: (error) => {}
+
+        JsonAdapter {
+            id: collapseSettings
+            property var collapsed: ({})
+        }
+    }
+
     // --- SHARED PIECES ---
     component Glyph: Text {
         font.family: "Material Icons Round"
@@ -273,7 +304,11 @@ PanelWindow {
         id: section
         required property string title
         property string glyph: ""
-        property bool collapsed: false
+        // Bound rather than a plain default, so a title missing from
+        // collapseState - a brand new section, or a first run with no file
+        // yet - falls through to false instead of coming up collapsed.
+        property bool collapsed: root.collapseState.hasOwnProperty(section.title)
+                                  ? root.collapseState[section.title] : false
         default property alias content: holder.data
 
         Layout.fillWidth: true
@@ -316,7 +351,10 @@ PanelWindow {
             MouseArea {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
-                onClicked: section.collapsed = !section.collapsed
+                // Through setSectionCollapsed rather than a direct toggle -
+                // assigning section.collapsed here would break the binding
+                // above, so a later file reload could never reach it again.
+                onClicked: root.setSectionCollapsed(section.title, !section.collapsed)
             }
         }
 
@@ -562,6 +600,50 @@ PanelWindow {
                 font.pixelSize: 9
                 color: Theme.outline
             }
+        }
+    }
+
+    // A small selectable pill - the Mpris player switcher. There is no
+    // existing "selected" style to reuse here (DeviceRow's radio-dot list
+    // lives in AudioWindow.qml and is full-width, which a row of these isn't),
+    // so this is a filled-vs-outlined pill instead, in the same accent-fill
+    // language ToolTile already uses for its active state.
+    component PlayerChip: Rectangle {
+        id: chip
+        required property string label
+        required property bool active
+        signal picked
+
+        implicitHeight: 22
+        implicitWidth: Math.min(chipText.implicitWidth, 90) + 18
+        radius: 11
+        color: chip.active ? Theme.primary
+                            : chipMouse.containsMouse
+                              ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.18)
+                              : Qt.rgba(Theme.on_surface.r, Theme.on_surface.g, Theme.on_surface.b, 0.07)
+        border.width: chip.active ? 0 : 1
+        border.color: Qt.rgba(Theme.outline.r, Theme.outline.g, Theme.outline.b, 0.4)
+        Behavior on color { ColorAnimation { duration: 150 } }
+
+        Text {
+            id: chipText
+            anchors.fill: parent
+            anchors.margins: 9
+            verticalAlignment: Text.AlignVCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: chip.label
+            font.family: Theme.fontFamily
+            font.pixelSize: 10
+            color: chip.active ? Theme.on_primary : Theme.on_surface
+            elide: Text.ElideRight
+        }
+
+        MouseArea {
+            id: chipMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: chip.picked()
         }
     }
 
@@ -968,13 +1050,29 @@ PanelWindow {
                         glyph: "music_note"
 
                         // First player that is actually playing, falling back to the
-                        // first player at all - a switcher is more chrome than a
-                        // single "now playing" card needs.
-                        readonly property var player: {
+                        // first player at all.
+                        readonly property var autoPlayer: {
                             const players = Mpris.players.values
                             if (players.length === 0) return null
                             return players.find(p => p.isPlaying) || players[0]
                         }
+
+                        // Sticky per session only, by identity rather than index so
+                        // it survives Mpris.players.values reordering. Empty means
+                        // "auto". Not persisted to disk on purpose - which player is
+                        // "yours" today has nothing to do with which one was yours
+                        // last restart.
+                        property string pinnedIdentity: ""
+
+                        // undefined rather than null when nothing matches, so a
+                        // pinned player that has disappeared (app closed, tab
+                        // closed) falls back to autoPlayer via `||` below instead
+                        // of the switcher going blank.
+                        readonly property var pinnedPlayer: mediaSection.pinnedIdentity !== ""
+                            ? Mpris.players.values.find(p => p.identity === mediaSection.pinnedIdentity)
+                            : undefined
+
+                        readonly property var player: mediaSection.pinnedPlayer || mediaSection.autoPlayer
 
                         // Bumped by the Timer below so progressFraction has something
                         // to react to - MprisPlayer.position is read on access, it
@@ -986,6 +1084,25 @@ PanelWindow {
                             if (!player || !player.lengthSupported || !player.positionSupported
                                     || player.length <= 0) return 0
                             return Math.min(1, player.position / player.length)
+                        }
+
+                        // Only worth showing once there is a choice to make -
+                        // with one player the auto pick is never a guess.
+                        RowLayout {
+                            Layout.fillWidth: true
+                            visible: Mpris.players.values.length > 1
+                            spacing: 6
+
+                            Repeater {
+                                model: Mpris.players.values
+
+                                PlayerChip {
+                                    required property var modelData
+                                    label: modelData.identity
+                                    active: modelData === mediaSection.player
+                                    onPicked: mediaSection.pinnedIdentity = modelData.identity
+                                }
+                            }
                         }
 
                         Text {
