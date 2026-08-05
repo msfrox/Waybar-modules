@@ -1497,8 +1497,18 @@ PanelWindow {
                                                         ? null : trayRow.modelData
                                                 }
                                             } else {
+                                                // Fire and stay open. Plenty of items
+                                                // do not implement Activate at all -
+                                                // Spotify's Ayatana indicator answers
+                                                // "No handler for Activate" and does not
+                                                // set ItemIsMenu either, so `onlyMenu` is
+                                                // false and nothing warns us up front.
+                                                // Closing the panel on that no-op left
+                                                // the user staring at a shut panel with
+                                                // nothing having happened; staying open
+                                                // costs a working item one Escape and
+                                                // keeps the menu one right-click away.
                                                 trayRow.modelData.activate()
-                                                root.isOpen = false
                                             }
                                         }
                                     }
