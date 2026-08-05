@@ -257,34 +257,104 @@ PanelWindow {
         return Theme.primary
     }
 
-    // --- SECTION COLLAPSE STATE ---
-    // Keyed by title rather than index: sections get reordered in this file
-    // far more often than the persisted file gets touched, and a title
-    // survives a reorder where an index wouldn't.
+    // --- PERSISTED PANEL STATE ---
+    // All keyed by title/label rather than index: sections and tiles get
+    // reordered in this file far more often than the persisted file gets
+    // touched, and a name survives a reorder where an index wouldn't.
     property var collapseState: ({})
+
+    // Which sections and quick-action tiles are hidden. Stored as *hidden*
+    // rather than *visible* on purpose: an absent key, an empty object and a
+    // missing file all have to mean "show it". Storing visibility instead
+    // would make a section added later default to invisible until somebody
+    // edited the file, which is how a new feature ships broken.
+    property var hiddenSections: ({})
+    property var hiddenActions: ({})
+
+    function isSectionHidden(title) {
+        return root.hiddenSections[title] === true
+    }
+
+    function isActionHidden(label) {
+        return root.hiddenActions[label] === true
+    }
 
     function setSectionCollapsed(title, collapsed) {
         const next = Object.assign({}, root.collapseState)
         next[title] = collapsed
         root.collapseState = next
-        collapseSettings.collapsed = next
-        collapseFile.writeAdapter()
+        settings.collapsed = next
+        settingsFile.writeAdapter()
+    }
+
+    // --- CATALOGUE ---
+    // What sections and quick actions this panel actually has, written into
+    // the settings file so another process can offer them without keeping its
+    // own copy of the list.
+    //
+    // This panel is the only thing that knows what it contains, and the lists
+    // are read off the live children rather than hand-maintained beside them:
+    // a hand-maintained copy is a second source of truth that goes stale the
+    // first time somebody adds a section and forgets.
+    function collectCatalogue() {
+        const sections = []
+        for (let i = 0; i < body.children.length; i++) {
+            const child = body.children[i]
+            if (child && child.title !== undefined && child.title !== "")
+                sections.push(child.title)
+        }
+        const actions = []
+        for (let i = 0; i < quickGrid.children.length; i++) {
+            const child = quickGrid.children[i]
+            if (child && child.label !== undefined && child.label !== "")
+                actions.push(child.label)
+        }
+        return { sections: sections, actions: actions }
+    }
+
+    // Written only when it has actually changed. The FileView watches this
+    // file, so an unconditional write on load would reload, re-publish and
+    // write again forever.
+    function publishCatalogue() {
+        const found = root.collectCatalogue()
+        if (JSON.stringify(found.sections) === JSON.stringify(settings.sections)
+            && JSON.stringify(found.actions) === JSON.stringify(settings.actions))
+            return
+        settings.sections = found.sections
+        settings.actions = found.actions
+        settingsFile.writeAdapter()
     }
 
     FileView {
-        id: collapseFile
+        id: settingsFile
         path: Quickshell.env("HOME") + "/.config/waybar-control-center/control-center.json"
         watchChanges: true
         onFileChanged: reload()
-        onLoaded: root.collapseState = collapseSettings.collapsed
+        onLoaded: {
+            root.collapseState = settings.collapsed
+            root.hiddenSections = settings.hiddenSections
+            root.hiddenActions = settings.hiddenActions
+            root.publishCatalogue()
+        }
 
         // No file yet is the normal first-run case, not an error - every
         // section just keeps its collapsed: false default below.
         onLoadFailed: (error) => {}
 
+        // Every key this file carries is declared here, including the two
+        // this panel never writes. hyprsys owns those, and a JsonAdapter
+        // serialises only the properties it knows about - so leaving them
+        // undeclared would mean the next collapse toggle silently deleted
+        // whatever hyprsys had just written.
         JsonAdapter {
-            id: collapseSettings
+            id: settings
             property var collapsed: ({})
+            property var hiddenSections: ({})
+            property var hiddenActions: ({})
+            // Published by this panel, read by hyprsys. Not settings — a
+            // description of what settings exist.
+            property var sections: []
+            property var actions: []
         }
     }
 
@@ -310,6 +380,10 @@ PanelWindow {
         property bool collapsed: root.collapseState.hasOwnProperty(section.title)
                                   ? root.collapseState[section.title] : false
         default property alias content: holder.data
+
+        // Hiding a section removes it from the layout entirely rather than
+        // leaving a gap: an invisible item in a ColumnLayout takes no space.
+        visible: !root.isSectionHidden(section.title)
 
         Layout.fillWidth: true
         spacing: 6
@@ -438,6 +512,10 @@ PanelWindow {
         property string hint: ""
         property bool active: false
         signal triggered
+
+        // A hidden tile leaves no hole in the grid — GridLayout reflows around
+        // invisible children, so the remaining tiles close up.
+        visible: !root.isActionHidden(tile.label)
 
         // The tile shows `detail` (the current state) rather than `label`, so
         // without this there is nowhere the tile says what it *is*.
@@ -897,6 +975,7 @@ PanelWindow {
                         glyph: "bolt"
 
                         GridLayout {
+                            id: quickGrid
                             Layout.fillWidth: true
                             columns: 4
                             rowSpacing: 6
