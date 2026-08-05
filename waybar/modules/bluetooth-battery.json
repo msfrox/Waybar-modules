@@ -1,0 +1,25 @@
+// Connected-Bluetooth-device battery level, next to the `bluetooth` module.
+//
+// `bluetooth`'s own `format-connected-battery` / `{device_battery_percentage}`
+// only populates when the device exposes BlueZ's `org.bluez.Battery1`
+// interface. Neither Bluetooth device that connects to this machine does
+// (both are soundcore/Anker gear, which reports battery over its own app's
+// protocol) and UPower has no entry for them either - see
+// `docs/audio-bluetooth-network.md` for how that was confirmed. This custom
+// module runs `waybar/scripts/bluetooth-battery.py`, which checks both
+// sources anyway and just renders nothing when neither has a level, so a
+// device that does support one of them (many true-wireless earbuds do) shows
+// up automatically without any config change.
+//
+// Same click behaviour as `bluetooth` - opens the native Quickshell panel,
+// right-click falls back to ML4W's bluetooth settings.
+{
+  "custom/bluetooth-battery": {
+    "exec": "~/.config/waybar/scripts/bluetooth-battery.py",
+    "return-type": "json",
+    "format": "{}",
+    "interval": 30,
+    "on-click": "qs ipc call bluetooth toggle",
+    "on-click-right": "sleep 0.1 && ~/.config/ml4w/settings/bluetooth.sh"
+  }
+}

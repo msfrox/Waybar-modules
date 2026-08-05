@@ -35,7 +35,13 @@ PanelWindow {
 
     implicitWidth: 420
     // 40 = the 20px inset the card keeps all round for its drop shadow.
-    implicitHeight: Math.min(content.implicitHeight + 80, 900)
+    //
+    // The cap used to be a flat 900px, which is smaller than this content gets:
+    // an Easy Effects list plus per-app streams pushed the column past it and
+    // the overflow drew straight out of the bottom of the card. Cap against the
+    // actual screen instead, leaving room for the bar and the slide-in margin.
+    implicitHeight: Math.min(content.implicitHeight + 80,
+                             (screen ? screen.height : 1080) - 140)
     color: "transparent"
 
     anchors {
@@ -240,6 +246,11 @@ PanelWindow {
             Layout.fillWidth: true
             from: 0
             to: 1
+            // Controls' Slider ignores the wheel unless asked. With it on, a
+            // wheel notch moves the handle and emits moved() exactly as a drag
+            // does, so the write-back below covers both without branching.
+            wheelEnabled: true
+            stepSize: 0.02
             // Binding straight to audio.volume would fight the drag, so take the
             // value on change and write back only from the handler.
             value: rowRoot.audio ? rowRoot.audio.volume : 0

@@ -76,6 +76,45 @@ panel is open — it is expensive and it drains peripherals that answer it.
 BlueZ publishes a freedesktop icon name per device (`audio-headset`, `input-mouse`); those
 are mapped to Material ligatures rather than shipping an icon theme.
 
+### Battery on the bar
+
+The panel above already shows device battery (`DeviceRow`'s `dev.batteryAvailable` /
+`dev.battery`), but the bar itself showed nothing. Waybar's `bluetooth` module can do this
+natively via `format-connected-battery` and `{device_battery_percentage}` - but only for
+devices that expose BlueZ's `org.bluez.Battery1` interface.
+
+Checked against what's actually connected here:
+
+```
+$ bluetoothctl devices Connected
+Device F4:9D:8A:FD:55:2B soundcore Boom 3i
+
+$ busctl introspect org.bluez /org/bluez/hci0/dev_F4_9D_8A_FD_55_2B
+org.bluez.Bearer.BREDR1              interface -  -
+org.bluez.Device1                    interface -  -
+org.bluez.MediaControl1              interface -  -
+# no org.bluez.Battery1 anywhere in the list
+```
+
+No `Battery1`, and no "Battery Percentage:" line in `bluetoothctl info` either. The other
+paired device (soundcore Liberty 4 NC) is the same. `upower -e` doesn't have an entry for
+either device (only `battery_BAT0` and the AC line power). Both are soundcore/Anker
+gear, which reports battery over its own app's proprietary protocol rather than a profile
+BlueZ or the kernel can see - so **native `format-connected-battery` renders blank on this
+machine**, and the decision was to write a backend script instead of shipping the native
+option.
+
+`waybar/scripts/bluetooth-battery.py` is a `custom/` module backend (`waybar/modules/
+bluetooth-battery.json`) that checks the same two sources `format-connected-battery` and
+UPower would - `bluetoothctl info`'s "Battery Percentage:" line, then a MAC-based lookup
+against `upower -e`/`upower -i` - and just emits an empty `text` when neither has a level,
+rather than showing something wrong. That means it currently renders nothing for either
+soundcore device, honestly, but will pick up a level automatically the moment a device that
+does support one of those two sources connects (most true-wireless earbuds from other
+vendors do). It keeps the same click behaviour as `bluetooth` - left opens the Quickshell
+panel, right falls back to ML4W's bluetooth settings - so it reads as an extension of that
+module rather than a separate control.
+
 ## Network
 
 Wi-Fi toggle, network list sorted connected-first then by signal, connect / disconnect /

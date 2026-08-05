@@ -3,12 +3,17 @@
 // The module itself stays a plain level readout - all the UI is in the
 // Quickshell AudioApp window it toggles. Right-click keeps pavucontrol for
 // per-app stream routing, which the panel deliberately does not duplicate.
+//
+// {format_source} is deliberately absent from every format string. Waybar
+// appends the *source* (microphone) state to the sink readout, so a bluetooth
+// headset - which is both - rendered a mic glyph on the bar next to the volume.
+// Input level and mute live in the panel, where there is room to label them.
 {
   "pulseaudio": {
     "format": "{icon}  {volume}%",
-    "format-bluetooth": "{volume}% {icon} {format_source}",
-    "format-bluetooth-muted": " {icon} {format_source}",
-    "format-muted": " {format_source}",
+    "format-bluetooth": "{icon}  {volume}%",
+    "format-bluetooth-muted": "  {icon}",
+    "format-muted": " ",
     "format-source": "",
     "format-source-muted": "",
     "format-icons": {
