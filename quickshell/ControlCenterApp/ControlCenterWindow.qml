@@ -918,6 +918,42 @@ PanelWindow {
                                     root.toggleAction("powerprofilesctl set " + next)
                                 }
                             }
+
+                            // These three commands are lifted from ML4W's SidebarWindow.qml -
+                            // only the shell commands, not the widgets, so this doesn't
+                            // depend on that file surviving an ML4W update.
+                            ToolTile {
+                                glyph: "brightness_6"
+                                label: "Theme"
+                                detail: "Theme"
+                                hint: "Switch between the light and dark theme"
+                                onTriggered: Quickshell.execDetached(
+                                    ["bash", "-c", Quickshell.env("HOME") + "/.config/ml4w/scripts/ml4w-toggle-theme"])
+                            }
+
+                            ToolTile {
+                                glyph: "colorize"
+                                label: "Colour picker"
+                                detail: "Pick"
+                                hint: "Pick a colour from the screen"
+                                onTriggered: {
+                                    root.isOpen = false
+                                    Quickshell.execDetached(
+                                        ["bash", "-c", Quickshell.env("HOME") + "/.config/ml4w/settings/hyprpicker.sh"])
+                                }
+                            }
+
+                            ToolTile {
+                                glyph: "photo_camera"
+                                label: "Screenshot"
+                                detail: "Shot"
+                                hint: "Take a screenshot"
+                                onTriggered: {
+                                    root.isOpen = false
+                                    Quickshell.execDetached(
+                                        ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh"])
+                                }
+                            }
                         }
                     }
 
