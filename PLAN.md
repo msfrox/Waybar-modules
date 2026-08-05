@@ -185,12 +185,12 @@ its phase 6.
   so hyprsys can offer them without keeping a second copy of the list. Turning Waybar
   modules on and off is handled entirely in hyprsys, by commenting their line out of the
   theme's `config`. Module *reordering* is still not offered anywhere.
-- **`settings/` stays here and keeps working until hyprsys phase 6 lands.** Nothing is
+- **`settings/` stays here and keeps working until it is deliberately removed.** Nothing is
   deleted early; the Control Center's Settings tile keeps opening it. When phase 6 ships,
   `settings/` is deleted and the tile launches `hyprsys` instead.
 - **The audio, network and bluetooth placeholder pages are not coming back.** They front
   live device state with no settings file behind them, which is why they were empty.
-  hyprsys phase 5 does them properly against NetworkManager, BlueZ and PipeWire.
+  hyprsys phase 6 does them properly against NetworkManager, BlueZ and PipeWire.
 
 ## Next
 
