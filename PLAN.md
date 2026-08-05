@@ -56,6 +56,17 @@ Shared conventions for every panel added here, taken from the existing ML4W wind
       framework: calendar, system usage, system tray (`Quickshell.Services.SystemTray`),
       quick toggles. One Waybar button opens it. Groundwork first — migrating individual
       modules into it is incremental afterwards.
+- [x] **Phase 6 — brightness, fans, wider tiles.** ✅ Internal and external (DDC/CI)
+      brightness sliders, fan speeds, three-across info tiles, scroll view dropped.
+- [x] **Phase 7 — rename.** ✅ `Waybar-modules` → `waybar-control-center`: repo, checkout,
+      and the `$XDG` settings/cache directories. `install.sh` migrates the old ones once.
+- [x] **Phase 8 — Quickshell becomes the notification daemon.** ✅ `NotificationCenterApp`:
+      clock over calendar over the notification list in one bottom-right card, plus toast
+      popups and a `NotificationState` singleton. Replaces both ML4W's `CalendarApp` and
+      swaync. Also fixed frosted glass, which had never actually worked anywhere. Details
+      in [docs/notifications.md](docs/notifications.md).
+- [ ] **Phase 9 — the settings app.** A standalone Quickshell config, launched on demand,
+      that edits the JSON the panels already read. See the scope contract.
 
 ### Scope contracts
 
@@ -74,6 +85,29 @@ sections, and a section component other modules can be dropped into later. The i
 fill is calendar + system usage + tray, because those are the three the bar most wants
 to shed.
 
+**Phase 9 — the settings app.** The Control Center is becoming the control surface for the
+whole session, and every panel it fronts has settings that currently only exist as hand-
+edited JSON. The point of this phase is an *adjustment surface*, not a new runtime:
+
+- **Its own Quickshell config**, launched on demand (`qs -c settings`), not another window
+  in `shell.qml`. A settings UI that is instantiated at login costs memory and startup time
+  every session to be looked at once a month. Opening it is a process spawn; closing it
+  frees everything.
+- **It edits files, it does not hold state.** Each panel keeps owning its own settings file
+  under `~/.config/waybar-control-center/`. The settings app reads those files, writes them
+  back, and the panels pick the change up through the `FileView` watch they already have.
+  Nothing in the running shell has to know the settings app exists.
+- **Sections:** Control Center (which sections are shown, which metrics, which quick
+  actions), plus one per panel — audio, bluetooth, network, notifications, usage dial.
+- **A Waybar section driven off `modules.json` itself.** Add/remove/enable modules, and for
+  per-module settings do *not* hand-write a form per module: read the JSON, list each key
+  with its current value, and pick a control from the value's type — bool → toggle, number →
+  spin box, string → text field, array → list editor. New modules then need no new code.
+
+Deliberately out of scope: anything that makes the settings app a dependency of the running
+shell. If it is not installed or not launched, everything must keep working exactly as it
+does now.
+
 ## Constraints
 
 - `~/.config/waybar/config` does not exist. The live pair is chosen by
@@ -87,8 +121,8 @@ to shed.
 
 ## Done, and what changed along the way
 
-All six phases shipped. Three things were not in the original plan and were added
-mid-flight at the owner's request:
+Phases 0–8 shipped. Things that were not in the original plan and were added mid-flight at
+the owner's request:
 
 - **Bluetooth and network panels.** Once the audio panel existed, the case for keeping
   blueman's and nm-applet's tray menus scraped through rofi collapsed — those broke
@@ -98,6 +132,24 @@ mid-flight at the owner's request:
 - **Matugen at Quickshell startup.** `Theme.qml`'s palette loader was commented out, so
   every Quickshell window came up on a hardcoded fallback palette until the next wallpaper
   change. That was the actual cause of "the calendar doesn't match the theme".
+- **Owning the notification daemon** (phase 8). Originally parked in the backlog as "its own
+  phase, not a patch", and the plan of record was to keep swaync and stack two windows. That
+  inverted once `Quickshell.Services.Notifications` turned out to be a complete API — see
+  [docs/notifications.md](docs/notifications.md).
+
+### The frosted glass that was never frosted
+
+Worth its own note, because it survived five panels and several attempts to fix it.
+
+Every card was a `Rectangle` with a vertical `gradient:` and a translucent `Rectangle`
+inset 2px inside it. A QML gradient is a **fill**, not a border — it painted the whole
+card, so the inner rectangle's alpha composited against *it* rather than against the
+wallpaper. The cards were opaque and always had been.
+
+The diagnostic that settled it: set the inner fill's alpha to `0.0` and screenshot. If the
+card looks identical, nothing behind it was ever showing through. Rectangle has no gradient
+border, so the fix was to drop the gradient and use one rectangle with a translucent fill
+and a hairline `border`.
 
 ## Next
 

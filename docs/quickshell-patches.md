@@ -39,40 +39,47 @@ should match what the calendar actually draws with.
 
 ---
 
-## `CalendarApp/CalendarWindow.qml` — move the popup to the bottom-right
+## `shell.qml` — swap ML4W's calendar for the notification centre
 
-The stock window is anchored top-centre, which is wrong once the bar itself is at the
-bottom. Two edits.
-
-```qml
-    // was: anchors { top: true }
-    anchors {
-        bottom: true
-        right: true
-    }
-```
+`CalendarApp` is no longer used. The calendar now lives inside this repo's
+`NotificationCenterApp`, together with the clock and the notification list, because all
+three had to share one surface — see [notifications.md](notifications.md).
 
 ```qml
-    // The window is 380x380 but the visible card is inset 20px all round for its
-    // drop shadow, so a 45px bottom margin leaves the card ~10px clear of the
-    // 55px bar, and a 0px right margin sits it 20px in from the screen edge.
-    property real currentBottomMargin: isOpen ? 45 : -820
+// was: import "CalendarApp"
+import "NotificationCenterApp"
 
-    margins {
-        bottom: root.currentBottomMargin
-        right: 0
-    }
-
-    Behavior on currentBottomMargin {   // was: on currentTopMargin
+    // was: CalendarWindow {}
+    NotificationCenterWindow {}
+    NotificationToasts {}
 ```
 
-The off-screen value stays large and negative (`-820`) so the slide-out clears the
-screen regardless of the card's height.
+Every other app in this repo is added to `shell.qml` the same way: one `import "<App>"`
+line and one instantiation inside `ShellRoot`.
 
-Adjust `45` to `<your bar's reserved height> - 10`. Read the real number with:
+ML4W's `CalendarApp/` is left on disk untouched. Nothing references it, and deleting it
+would only give the next ML4W update something to restore.
 
-```bash
-hyprctl monitors -j | python3 -c "import json,sys;print(json.load(sys.stdin)[0]['reserved'])"
+---
+
+## `~/.config/hypr` — stop swaync so Quickshell can own the bus name
+
+Not a Quickshell file, but the same class of problem: `conf/autostart.lua:46` starts
+swaync, and `~/.config/hypr` is a symlink into `~/.mydotfiles/com.ml4w.dotfiles`, so
+editing that line gets reverted on the next update.
+
+`~/.config/hypr/shehan/notifications.lua`, required from `custom.lua` (which loads last
+and the updater never touches), lets ML4W start swaync and then kills it. The `sleep` and
+the `pkill -x` are both load-bearing — [notifications.md](notifications.md) explains why.
+
+---
+
+## `~/.config/waybar/modules.json` — the clock opens the notification centre
+
+```json
+  "clock": {
+    "on-click": "qs ipc call notifications toggle",
+  }
 ```
 
-The fourth element is the bottom reservation.
+Waybar does not pick this up until the bar is restarted: `~/.config/waybar/launch.sh`.

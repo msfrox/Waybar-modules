@@ -22,6 +22,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.SystemTray
+import Quickshell.Services.Mpris
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
@@ -917,6 +918,195 @@ PanelWindow {
                                     root.toggleAction("powerprofilesctl set " + next)
                                 }
                             }
+                        }
+                    }
+
+                    // ---------- MEDIA ----------
+                    // Quickshell's Mpris service replaces the bar's `custom/nowplaying`
+                    // module, which polled `playerctl` every second - the players
+                    // already live on the session bus, so this reads them directly
+                    // instead.
+                    Section {
+                        id: mediaSection
+                        title: "Media"
+                        glyph: "music_note"
+
+                        // First player that is actually playing, falling back to the
+                        // first player at all - a switcher is more chrome than a
+                        // single "now playing" card needs.
+                        readonly property var player: {
+                            const players = Mpris.players.values
+                            if (players.length === 0) return null
+                            return players.find(p => p.isPlaying) || players[0]
+                        }
+
+                        // Bumped by the Timer below so progressFraction has something
+                        // to react to - MprisPlayer.position is read on access, it
+                        // does not push updates on its own.
+                        property int positionTick: 0
+
+                        readonly property real progressFraction: {
+                            positionTick // dependency only, see comment above
+                            if (!player || !player.lengthSupported || !player.positionSupported
+                                    || player.length <= 0) return 0
+                            return Math.min(1, player.position / player.length)
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            visible: !mediaSection.player
+                            text: "Nothing playing"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 11
+                            color: Theme.outline
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            visible: !!mediaSection.player
+                            spacing: 8
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: 56
+                                radius: 8
+                                color: trackMouse.containsMouse
+                                       ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                                       : "transparent"
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    spacing: 10
+
+                                    Rectangle {
+                                        Layout.preferredWidth: 48
+                                        Layout.preferredHeight: 48
+                                        radius: 6
+                                        color: "transparent"
+                                        clip: true
+                                        visible: !!(mediaSection.player && mediaSection.player.trackArtUrl)
+
+                                        Image {
+                                            anchors.fill: parent
+                                            asynchronous: true
+                                            fillMode: Image.PreserveAspectCrop
+                                            source: mediaSection.player ? mediaSection.player.trackArtUrl : ""
+                                        }
+                                    }
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 1
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: mediaSection.player ? mediaSection.player.trackTitle : ""
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                            color: Theme.on_surface
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: !!(mediaSection.player && mediaSection.player.trackArtist)
+                                            text: mediaSection.player ? mediaSection.player.trackArtist : ""
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 11
+                                            color: Theme.outline
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id: trackMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: if (mediaSection.player) mediaSection.player.raise()
+                                }
+                            }
+
+                            // Read-only - the point is glanceable state, not a seek
+                            // bar to drag.
+                            Rectangle {
+                                Layout.fillWidth: true
+                                visible: !!(mediaSection.player && mediaSection.player.lengthSupported
+                                            && mediaSection.player.positionSupported
+                                            && mediaSection.player.length > 0)
+                                implicitHeight: 3
+                                radius: 1.5
+                                color: Qt.rgba(Theme.on_surface.r, Theme.on_surface.g, Theme.on_surface.b, 0.2)
+
+                                Rectangle {
+                                    width: parent.width * mediaSection.progressFraction
+                                    height: parent.height
+                                    radius: parent.radius
+                                    color: Theme.primary
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignHCenter
+                                spacing: 24
+
+                                Glyph {
+                                    text: "skip_previous"
+                                    font.pixelSize: 20
+                                    opacity: mediaSection.player && mediaSection.player.canGoPrevious ? 1 : 0.35
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.margins: -6
+                                        cursorShape: Qt.PointingHandCursor
+                                        enabled: !!(mediaSection.player && mediaSection.player.canGoPrevious)
+                                        onClicked: mediaSection.player.previous()
+                                    }
+                                }
+
+                                Glyph {
+                                    text: mediaSection.player && mediaSection.player.isPlaying
+                                          ? "pause" : "play_arrow"
+                                    font.pixelSize: 22
+                                    opacity: mediaSection.player && mediaSection.player.canTogglePlaying ? 1 : 0.35
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.margins: -6
+                                        cursorShape: Qt.PointingHandCursor
+                                        enabled: !!(mediaSection.player && mediaSection.player.canTogglePlaying)
+                                        onClicked: mediaSection.player.togglePlaying()
+                                    }
+                                }
+
+                                Glyph {
+                                    text: "skip_next"
+                                    font.pixelSize: 20
+                                    opacity: mediaSection.player && mediaSection.player.canGoNext ? 1 : 0.35
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.margins: -6
+                                        cursorShape: Qt.PointingHandCursor
+                                        enabled: !!(mediaSection.player && mediaSection.player.canGoNext)
+                                        onClicked: mediaSection.player.next()
+                                    }
+                                }
+                            }
+                        }
+
+                        // Runs only while there is something to watch tick over -
+                        // expanded and playing - so a paused or idle player does not
+                        // spend a timer on a bar that never moves.
+                        Timer {
+                            interval: 1000
+                            repeat: true
+                            running: !mediaSection.collapsed
+                                     && !!(mediaSection.player && mediaSection.player.isPlaying)
+                            onTriggered: mediaSection.positionTick++
                         }
                     }
 

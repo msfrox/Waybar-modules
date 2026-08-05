@@ -22,10 +22,12 @@ ML4W-specific beyond the install paths.
 | **Bluetooth** | `bluetooth` | Adapter toggle, connect/pair/forget, device battery — native BlueZ, no tray applet |
 | **Network** | `network` | Wi-Fi list with inline PSK entry, connection details (IP, link rate, frequency), Tailscale status |
 | **Claude usage** | `image` module rendering a two-window dial | Usage breakdown and display options |
-| **Control Center** | one button | Calendar, live system usage, quick actions, pending updates, the system tray |
+| **Control Center** | one button | Live system usage, brightness, quick actions, media, pending updates, the system tray |
+| **Notifications** | the `clock` | Large clock, calendar and the notification list in one card — Quickshell is the notification daemon, not swaync |
 
 Docs: [audio / bluetooth / network](docs/audio-bluetooth-network.md) ·
 [Claude usage](docs/claude-usage.md) · [Control Center](docs/control-center.md) ·
+[notifications](docs/notifications.md) ·
 [patches to ML4W's files](docs/quickshell-patches.md)
 
 ### The usage dial
@@ -52,7 +54,7 @@ because they are yours.
 
 - Hyprland (for `HyprlandFocusGrab` and the `hyprctl` layer queries)
 - Waybar 0.15+
-- Quickshell 0.3+
+- Quickshell 0.3+ (`Quickshell.Services.Notifications` for the notification daemon)
 - Python 3 with `pycairo` (usage dial rendering)
 - Optional: `nmcli` for connection details, `tailscale`, `easyeffects`
 - A Nerd Font and Material Symbols for the glyphs
