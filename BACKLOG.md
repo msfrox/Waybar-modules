@@ -8,7 +8,13 @@ Ideas parked rather than built, so they stay out of the working context.
   agent and BlueZ's pairing agent. The panels cover the common paths (wifi PSK, pairing
   without confirmation) but a VPN prompt, an 802.1x prompt, or a device that needs a PIN
   confirmed has nothing to display it.
-- **Bluetooth battery on the bar**, not only in the panel.
+- **Bluetooth battery on the bar** — *investigated 2026-08-05, blocked on hardware.* The
+  soundcore Boom 3i exposes no BlueZ `Battery1` interface and no UPower device, so Waybar's
+  native `{device_battery_percentage}` renders blank and there is nothing for a script to
+  read either. Anker reports battery over its own app protocol. `waybar/scripts/
+  bluetooth-battery.py` and `waybar/modules/bluetooth-battery.json` exist and degrade to
+  empty text — **deliberately not merged into the bar**, since today it would only ever
+  show nothing. Merge them if a headset that does expose Battery1 turns up.
 - **A player switcher in the Media section.** It currently shows the first playing player
   and falls back to the first player at all. With Spotify, Firefox and AudioTube all
   registered at once that is a guess, not a choice.
@@ -24,7 +30,8 @@ Ideas parked rather than built, so they stay out of the working context.
 - `custom/nowplaying` **stays on the bar** by the owner's call, alongside the Control
   Center's Media section rather than replaced by it — the bar module is the at-a-glance
   read, the section is the one with transport controls and album art.
-- Remember collapsed sections across restarts.
+- **Per-core CPU** — owner's call 2026-08-05: not wanted on the Control Center's face.
+  Possibly a tooltip on the existing CPU bar later. Not queued.
 
 ## Usage dial
 
@@ -38,8 +45,7 @@ Ideas parked rather than built, so they stay out of the working context.
 1. **Phase 9, the settings app.** Scope contract is in `PLAN.md`. The one genuinely new
    idea in it is the Waybar section: read `modules.json`, list each key with its current
    value, and choose the control from the value's *type*, so new modules need no new code.
-2. **Per-core CPU and a short history sparkline** — the one thing COSMIC's Minimon
-   applet has that nothing here does.
+2. **Tray submenus**, if the inline menu landed without them.
 
 ### On reusing ML4W's sidebar widgets
 
