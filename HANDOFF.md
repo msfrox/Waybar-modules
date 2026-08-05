@@ -83,11 +83,27 @@ IPC targets: `qs ipc show`. The ones this repo owns are `audio`, `bluetooth`, `n
 These are what phase 9's settings app will edit. Each panel already watches its own file
 through a `FileView`, so the settings app never has to talk to the running shell.
 
+## The settings app
+
+`settings/` — a standalone **GTK4/libadwaita** app, not a Quickshell panel.
+`install.sh` symlinks it to `~/.local/bin/waybar-control-center-settings` and installs a
+`.desktop` entry; the Control Center's **Settings** quick action opens it.
+
+```bash
+waybar-control-center-settings --page waybar
+```
+
+It edits the files above and nothing else — no IPC, no daemon. Requires
+`python-gobject`, `gtk4`, `libadwaita`; `install.sh` warns if they are missing.
+
+Read [docs/settings.md](docs/settings.md) before touching it. The two things that will bite:
+`modules.json` is JSONC **owned by ML4W** and is edited by targeted text replacement so its
+176 comments survive; and it is parsed with a scanner, not a regex, because the regex
+version looked correct and silently parsed nothing (real comments in it contain quotes).
+
 ## Next
 
-**Phase 9 — the settings app**: planned, not started. Scope contract is in `PLAN.md`. A
-standalone `qs -c settings` config that edits the JSON the panels already read, plus a
-Waybar section driven dynamically off `modules.json` rather than a hand-written form per
-module.
+Finish phase 9: Control Center section/quick-action editing is still compiled into the QML,
+and Waybar module add/remove/reorder is not implemented — only editing existing keys.
 
 Everything else is in `BACKLOG.md`.
