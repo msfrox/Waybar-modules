@@ -4,9 +4,6 @@ Ideas parked rather than built, so they stay out of the working context.
 
 ## Panels
 
-- **Per-app volume streams** in the audio panel. `Quickshell.Services.Pipewire` exposes
-  them (`isStream` nodes) and the sliders would be the same component. Deliberately left
-  out of v1 so the panel matched what it replaced; right-click still opens `pavucontrol`.
 - **A secret agent.** Masking `nm-applet` and `blueman` removed NetworkManager's secret
   agent and BlueZ's pairing agent. The panels cover the common paths (wifi PSK, pairing
   without confirmation) but a VPN prompt, an 802.1x prompt, or a device that needs a PIN
@@ -27,8 +24,6 @@ Ideas parked rather than built, so they stay out of the working context.
 - `custom/nowplaying` **stays on the bar** by the owner's call, alongside the Control
   Center's Media section rather than replaced by it — the bar module is the at-a-glance
   read, the section is the one with transport controls and album art.
-- Per-core CPU and a short history sparkline — the one thing COSMIC's Minimon applet has
-  that nothing here does.
 - Remember collapsed sections across restarts.
 
 ## Usage dial
@@ -43,9 +38,8 @@ Ideas parked rather than built, so they stay out of the working context.
 1. **Phase 9, the settings app.** Scope contract is in `PLAN.md`. The one genuinely new
    idea in it is the Waybar section: read `modules.json`, list each key with its current
    value, and choose the control from the value's *type*, so new modules need no new code.
-2. **Three more quick actions from ML4W's sidebar**: light/dark toggle, colour picker,
-   screenshot. All three are already wired there — copy the commands, not the widgets.
-3. **Per-app volume streams** (see above).
+2. **Per-core CPU and a short history sparkline** — the one thing COSMIC's Minimon
+   applet has that nothing here does.
 
 ### On reusing ML4W's sidebar widgets
 
@@ -59,7 +53,7 @@ slider" would mean copying the same ~40 lines out of it — which is what happen
 debounce and a floor at 1%. The genuinely new part is the **external** slider: the sidebar
 has no DDC/CI control at all.
 
-Same applies to the three toggles above — lift the *bindings and commands*, not the
+Same applied to the light/dark, colour-picker and screenshot quick actions — lift the *bindings and commands*, not the
 widgets. And note ML4W owns that file, so anything left depending on it breaks on their
 next update.
 
