@@ -52,11 +52,14 @@ Ideas parked rather than built, so they stay out of the working context.
 
 ## Next session — queued, in order
 
-1. **Make Control Center sections and quick actions data-driven.** Both are compiled into
-   `ControlCenterApp`'s QML today, which is why the settings app can only edit collapse
-   state. Move them into `control-center.json` alongside it. This is the QML-side
-   prerequisite for hyprsys phase 6 — the settings UI itself is no longer built here.
-2. **Tray submenus**, if the inline menu landed without them.
+1. **Tray submenus**, if the inline menu landed without them.
+2. **Reordering modules on the bar.** hyprsys can turn a module on and off (it comments
+   the line out of the theme's `config`); moving a line between or within the
+   `modules-*` arrays is a different and riskier edit, and nobody has asked for it yet.
+
+~~Make Control Center sections and quick actions data-driven.~~ Done 2026-08-06 — the
+panel reads a hidden-set from `control-center.json` and publishes a catalogue of its own
+sections and tiles for hyprsys to render.
 
 ~~Phase 9, the settings app.~~ Shipped, then moved: `settings/` is absorbed by
 [hyprsys](https://github.com/msfrox/hyprsys) in its phase 6, together with the two items

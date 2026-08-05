@@ -90,11 +90,15 @@ is what lets the UI move to another repo without either side noticing.
 phase 6.** It still works and is still installed; nothing is deleted until that lands. But
 no new settings UI is built in this repo — see PLAN.md, "The settings app, moved out".
 
-The two unfinished phase-9 items go with it, and each has a **QML-side prerequisite that
-is still this repo's job**: Control Center section visibility and the quick-action list are
-compiled into `ControlCenterApp`'s QML, and module order lives in the theme's `config`.
-Nothing can edit either until that state moves into `control-center.json`, the way collapse
-state already has.
+Both unfinished phase-9 items are **done** (2026-08-06). This repo's half was making the
+state reachable: `ControlCenterApp` reads `hiddenSections` / `hiddenActions` from
+`control-center.json` and publishes a `sections` / `actions` catalogue of what it contains,
+read off its own live children rather than hand-maintained beside them. hyprsys renders the
+switches. Turning Waybar modules on and off is hyprsys's side entirely — it comments the
+module's line out of the theme's `config`.
+
+**If you add a section or a quick-action tile, do nothing else.** The catalogue is derived
+from the live children, so it publishes itself and the setting appears in hyprsys.
 
 `settings/` — a standalone **GTK4/libadwaita** app, not a Quickshell panel.
 `install.sh` symlinks it to `~/.local/bin/waybar-control-center-settings` and installs a
@@ -117,8 +121,8 @@ version looked correct and silently parsed nothing (real comments in it contain 
 **Not the settings app** — it moves to hyprsys phase 6, along with its two unfinished
 items. See PLAN.md, "The settings app, moved out".
 
-What is still this repo's to do, if anything is picked up here: make Control Center section
-visibility and the quick-action list data-driven out of `control-center.json`, since that
-is the QML-side blocker hyprsys cannot work around.
+Nothing is blocking hyprsys any more. `settings/` here still works and is still installed;
+deleting it and repointing the Control Center's Settings tile at `hyprsys` is a deliberate
+later step.
 
 Everything else is in `BACKLOG.md`.

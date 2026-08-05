@@ -179,12 +179,12 @@ its phase 6.
 - **Do not build new settings UI here.** Not a page, not a field, not a new backing file
   format. If a panel needs a new option, add the setting *file* it reads and stop there —
   the UI for it belongs in hyprsys.
-- **The QML side of the two unfinished items is still this repo's job.** hyprsys cannot
-  make Control Center section visibility and the quick-action list editable while they are
-  compiled into `ControlCenterApp`'s QML; the same goes for module ordering living in the
-  theme's `config`. Making that state data-driven — reading it from
-  `control-center.json` the way collapse state already is — is the prerequisite, and it is
-  a Quickshell change, not a settings change.
+- **The QML side of the two unfinished items is done** (2026-08-06). `ControlCenterApp`
+  now reads `hiddenSections` / `hiddenActions` out of `control-center.json`, and
+  **publishes a catalogue** — `sections` and `actions`, read off its own live children —
+  so hyprsys can offer them without keeping a second copy of the list. Turning Waybar
+  modules on and off is handled entirely in hyprsys, by commenting their line out of the
+  theme's `config`. Module *reordering* is still not offered anywhere.
 - **`settings/` stays here and keeps working until hyprsys phase 6 lands.** Nothing is
   deleted early; the Control Center's Settings tile keeps opening it. When phase 6 ships,
   `settings/` is deleted and the tile launches `hyprsys` instead.
