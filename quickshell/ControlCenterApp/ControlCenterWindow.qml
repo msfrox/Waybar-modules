@@ -27,6 +27,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Effects
 import qs.CustomTheme
+import qs.NotificationCenterApp
 
 PanelWindow {
     id: root
@@ -563,50 +564,6 @@ PanelWindow {
         }
     }
 
-    // --- CALENDAR DATA ---
-    readonly property var dayNames: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-    property int viewMonth: new Date().getMonth()
-    property int viewYear: new Date().getFullYear()
-
-    ListModel { id: dayModel }
-
-    Component.onCompleted: buildMonth(viewYear, viewMonth)
-
-    function stepMonth(delta) {
-        let month = viewMonth + delta
-        let year = viewYear
-        if (month < 0) { month = 11; year-- }
-        if (month > 11) { month = 0; year++ }
-        viewMonth = month; viewYear = year
-        buildMonth(year, month)
-    }
-
-    function buildMonth(year, month) {
-        dayModel.clear()
-        const first = new Date(year, month, 1).getDay()
-        // JS weeks start on Sunday; this grid starts on Monday.
-        const offset = first === 0 ? 6 : first - 1
-        const daysThis = new Date(year, month + 1, 0).getDate()
-        const daysPrev = new Date(year, month, 0).getDate()
-        const today = new Date()
-
-        for (let i = 0; i < 42; i++) {
-            if (i < offset) {
-                dayModel.append({ day: daysPrev - offset + i + 1, inMonth: false, isToday: false })
-            } else if (i < offset + daysThis) {
-                const n = i - offset + 1
-                dayModel.append({
-                    day: n,
-                    inMonth: true,
-                    isToday: n === today.getDate() && month === today.getMonth()
-                             && year === today.getFullYear()
-                })
-            } else {
-                dayModel.append({ day: i - offset - daysThis + 1, inMonth: false, isToday: false })
-            }
-        }
-    }
-
     // ==========================================
     // PANEL
     // ==========================================
@@ -621,24 +578,19 @@ PanelWindow {
             color: Qt.rgba(Theme.shadow.r, Theme.shadow.g, Theme.shadow.b, 0.4)
         }
 
+        // One rectangle: translucent fill, solid hairline border. A gradient
+        // is a FILL, not a border, so it painted the whole card and the
+        // "translucent" inner rectangle composited against that opaque
+        // gradient rather than against the wallpaper - never actually
+        // see-through. Blur comes from the "quickshell-frosted-glass" layer
+        // rule in ~/.config/hypr/shehan/theming.lua.
         Rectangle {
             id: mainBgRect
             anchors.fill: parent
             radius: 10
-
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: Theme.primary }
-                GradientStop { position: 1.0; color: Theme.on_primary }
-            }
-
-            // Frosted glass - see the note in AudioWindow.qml.
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 2
-                radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
-            }
+            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
+            border.width: 1
+            border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.35)
         }
 
         ColumnLayout {
@@ -723,91 +675,6 @@ PanelWindow {
 
                     onImplicitHeightChanged: root.bodyHeight = implicitHeight
                     Component.onCompleted: root.bodyHeight = implicitHeight
-
-                    // ---------- CALENDAR ----------
-                    Section {
-                        title: "Calendar"
-                        glyph: "calendar_month"
-
-                        RowLayout {
-                            Layout.fillWidth: true
-
-                            Glyph {
-                                text: "chevron_left"
-                                font.pixelSize: 18
-                                MouseArea {
-                                    anchors.fill: parent
-                                    anchors.margins: -6
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.stepMonth(-1)
-                                }
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignHCenter
-                                text: Qt.formatDate(new Date(root.viewYear, root.viewMonth, 1), "MMMM yyyy")
-                                font.family: Theme.fontFamily
-                                font.pixelSize: 13
-                                font.bold: true
-                                color: Theme.primary
-                            }
-
-                            Glyph {
-                                text: "chevron_right"
-                                font.pixelSize: 18
-                                MouseArea {
-                                    anchors.fill: parent
-                                    anchors.margins: -6
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.stepMonth(1)
-                                }
-                            }
-                        }
-
-                        GridLayout {
-                            Layout.fillWidth: true
-                            columns: 7
-                            rowSpacing: 2
-                            columnSpacing: 2
-
-                            Repeater {
-                                model: root.dayNames
-                                Text {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    horizontalAlignment: Text.AlignHCenter
-                                    text: modelData
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 10
-                                    color: Theme.outline
-                                }
-                            }
-
-                            Repeater {
-                                model: dayModel
-
-                                Rectangle {
-                                    required property var model
-                                    Layout.fillWidth: true
-                                    implicitHeight: 26
-                                    radius: 100
-                                    color: model.isToday ? Theme.primary : "transparent"
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: model.day
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 11
-                                        font.bold: model.isToday
-                                        color: model.isToday ? Theme.on_primary
-                                             : model.inMonth ? Theme.on_surface : Theme.outline
-                                        opacity: model.inMonth ? 1.0 : 0.45
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     // ---------- SYSTEM ----------
                     Section {
@@ -952,8 +819,9 @@ PanelWindow {
                             rowSpacing: 6
                             columnSpacing: 6
 
-                            // The first four mirror swaync's own buttons-grid,
-                            // so the Control Center is a superset of the panel
+                            // The first four are the toggles a notification
+                            // panel's own buttons-grid usually carries, so the
+                            // Control Center is a superset of the panel
                             // whose button it replaced on the bar.
                             ToolTile {
                                 glyph: root.tool("wifi_enabled") ? "wifi" : "wifi_off"
@@ -985,12 +853,12 @@ PanelWindow {
                             }
 
                             ToolTile {
-                                glyph: root.tool("dnd") ? "notifications_off" : "notifications"
+                                glyph: NotificationState.dnd ? "notifications_off" : "notifications"
                                 label: "Do not disturb"
-                                detail: root.tool("dnd") ? "DND on" : "Notify"
-                                active: !!root.tool("dnd")
-                                hint: "Silence notifications (swaync do-not-disturb)"
-                                onTriggered: root.toggleAction("swaync-client -d -sw")
+                                detail: NotificationState.dnd ? "DND on" : "Notify"
+                                active: NotificationState.dnd
+                                hint: "Silence notifications (do-not-disturb)"
+                                onTriggered: NotificationState.toggleDnd()
                             }
 
                             ToolTile {
@@ -1053,11 +921,10 @@ PanelWindow {
                     }
 
                     // ---------- NOTIFICATIONS ----------
-                    // swaync stays the notification daemon - only one process
-                    // can own org.freedesktop.Notifications, and reimplementing
-                    // a daemon to move a button is the wrong trade. This is a
-                    // front end over `swaync-client`, which is exactly what the
-                    // bar's custom/notification module was.
+                    // Quickshell is the notification daemon now, so there is no
+                    // separate process to front for. This section is just a
+                    // summary of what NotificationState is holding, and a way
+                    // into the panel it owns.
                     Section {
                         title: "Notifications"
                         glyph: "notifications"
@@ -1081,23 +948,23 @@ PanelWindow {
                                 spacing: 10
 
                                 Glyph {
-                                    text: root.tool("dnd") ? "notifications_off"
-                                        : root.tool("notifications") > 0 ? "notifications_active"
+                                    text: NotificationState.dnd ? "notifications_off"
+                                        : NotificationState.count > 0 ? "notifications_active"
                                         : "notifications_none"
                                     font.pixelSize: 18
-                                    color: root.tool("dnd") ? Theme.outline
-                                         : root.tool("notifications") > 0 ? Theme.tertiary
+                                    color: NotificationState.dnd ? Theme.outline
+                                         : NotificationState.count > 0 ? Theme.tertiary
                                          : Theme.primary
                                 }
 
                                 Text {
                                     Layout.fillWidth: true
                                     text: {
-                                        const n = root.tool("notifications") || 0
-                                        if (n === 0) return root.tool("dnd")
+                                        const n = NotificationState.count || 0
+                                        if (n === 0) return NotificationState.dnd
                                                      ? "No notifications · DND on" : "No notifications"
                                         return n + " notification" + (n === 1 ? "" : "s")
-                                               + (root.tool("dnd") ? " · DND on" : "")
+                                               + (NotificationState.dnd ? " · DND on" : "")
                                     }
                                     font.family: Theme.fontFamily
                                     font.pixelSize: 12
@@ -1114,7 +981,7 @@ PanelWindow {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     root.isOpen = false
-                                    Quickshell.execDetached(["swaync-client", "-t", "-sw"])
+                                    NotificationState.togglePanel()
                                 }
                             }
                         }

@@ -18,10 +18,23 @@ ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
 # The project used to be called "Waybar-modules", and its settings and cache
 # directories were named after it. Move them once so an existing install keeps
 # its settings instead of silently falling back to defaults.
+#
+# Move the *contents*, not the directory: a still-running Waybar script can
+# recreate the new directory before this runs, and a plain `mv` of the directory
+# would then skip the migration and strand the settings. Existing files in the
+# new directory win.
 for base in "${XDG_CONFIG_HOME:-$HOME/.config}" "${XDG_CACHE_HOME:-$HOME/.cache}"; do
-  if [ -d "$base/waybar-modules" ] && [ ! -e "$base/waybar-control-center" ]; then
-    mv "$base/waybar-modules" "$base/waybar-control-center"
-    ok "migrated $base/waybar-modules -> waybar-control-center"
+  old="$base/waybar-modules"
+  [ -d "$old" ] || continue
+  mkdir -p "$base/waybar-control-center"
+  for f in "$old"/* "$old"/.[!.]*; do
+    [ -e "$f" ] || continue
+    [ -e "$base/waybar-control-center/$(basename "$f")" ] || mv "$f" "$base/waybar-control-center/"
+  done
+  if rmdir "$old" 2>/dev/null; then
+    ok "migrated $old -> $base/waybar-control-center"
+  else
+    warn "$old still has files the new directory already had — stale cache, safe to delete"
   fi
 done
 

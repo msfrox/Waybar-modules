@@ -243,10 +243,10 @@ def tools():
     if shutil.which("wpctl"):
         state["muted"] = "[MUTED]" in run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
 
-    if shutil.which("swaync-client"):
-        state["dnd"] = run(["swaync-client", "-D"]).strip() == "true"
-        count = run(["swaync-client", "-c"]).strip()
-        state["notifications"] = int(count) if count.isdigit() else 0
+    # Notification count and DND used to be polled here out of swaync-client.
+    # Quickshell is the notification daemon now, so that state lives in the
+    # NotificationState singleton and the Control Center reads it directly —
+    # no subprocess, and no polling interval to lag behind.
 
     return state
 

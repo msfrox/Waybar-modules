@@ -250,24 +250,19 @@ PanelWindow {
             color: Qt.rgba(Theme.shadow.r, Theme.shadow.g, Theme.shadow.b, 0.4)
         }
 
+        // One rectangle: translucent fill, solid hairline border. A gradient
+        // is a FILL, not a border, so it painted the whole card and the
+        // "translucent" inner rectangle composited against that opaque
+        // gradient rather than against the wallpaper - never actually
+        // see-through. Blur comes from the "quickshell-frosted-glass" layer
+        // rule in ~/.config/hypr/shehan/theming.lua.
         Rectangle {
             id: mainBgRect
             anchors.fill: parent
             radius: 10
-
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: Theme.primary }
-                GradientStop { position: 1.0; color: Theme.on_primary }
-            }
-
-            // Frosted glass - see the note in AudioWindow.qml.
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 2
-                radius: parent.radius - anchors.margins
-                color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
-            }
+            color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
+            border.width: 1
+            border.color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.35)
         }
 
         ColumnLayout {
