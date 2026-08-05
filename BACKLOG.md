@@ -26,6 +26,14 @@ Ideas parked rather than built, so they stay out of the working context.
 
 ## Control Center
 
+- **Focus the window a tray `activate()` restores.** Verified 2026-08-05 that left-clicking
+  a tray row works — Spotify moved from workspace `-98` (Hyprland's special workspace, where
+  its own "Minimize to Tray" had put it) back to workspace 1. But Hyprland's focus stayed on
+  the window that already had it, so nothing visibly came forward and it reads as a no-op.
+  SNI `Activate` does not carry a "and focus me" contract, and Quickshell has no handle on
+  which toplevel the item owns, so this probably needs a `hyprctl dispatch focuswindow`
+  keyed off the item's `id`/`desktopEntry` — fragile, hence parked rather than guessed at.
+
 - Migrate the quicklinks drawer.
 - `custom/nowplaying` **stays on the bar** by the owner's call, alongside the Control
   Center's Media section rather than replaced by it — the bar module is the at-a-glance
