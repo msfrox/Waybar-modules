@@ -105,11 +105,13 @@ from the child (`onImplicitHeightChanged: root.bodyHeight = implicitHeight`) ins
 resolves to the internal `Flickable`, whose `availableWidth` is not the one that matters —
 the column sizes to its own content and hugs the left edge.
 
-**swaync stays the notification daemon.** Only one process can own
-`org.freedesktop.Notifications`, so moving the bar's notification button here means a front
-end over `swaync-client` (`-c` count, `-D` DND state, `-d` toggle, `-t` open panel) — which
-is exactly what `custom/notification` was. Reimplementing a daemon to relocate a button is
-the wrong trade.
+**The Notifications section reads `NotificationState` directly, not a subprocess.** The
+original plan here was a front end over `swaync-client` (`-c` count, `-D` DND state, `-d`
+toggle) — reimplementing a daemon just to relocate a button looked like the wrong trade.
+That inverted once Quickshell became the notification daemon itself (phase 8): the section
+and its DND toggle now bind straight to the same singleton the notification centre uses, so
+there is no subprocess and no polling interval to lag behind. See
+[notifications.md](notifications.md).
 
 **Popup transparency matches swaync's**, which defines
 `@blur_background: rgba(bg, 0.3)` in its Matugen-generated `colors.css`. Every Quickshell

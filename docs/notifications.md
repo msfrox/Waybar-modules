@@ -27,7 +27,7 @@ thing one card.
 
 | File | Holds |
 |---|---|
-| `NotificationState.qml` | the `NotificationServer`, the DND flag, arrival times, toast list. A singleton because the toasts have to keep firing while the panel is closed and unmapped. |
+| `NotificationState.qml` | the `NotificationServer`, the DND flag, arrival times, toast list, and the persisted history. A singleton because the toasts have to keep firing while the panel is closed and unmapped. |
 | `NotificationCenterWindow.qml` | the bottom-right panel: clock, calendar, list. IPC target `notifications`. |
 | `NotificationToasts.qml` | the top-right popups that replace the ones swaync drew. |
 | `NotificationEntry.qml` | one notification, shared by the panel list and the toasts. |
@@ -66,8 +66,12 @@ kill lost the race.
   dangles. Transient notifications (volume OSDs and the like) are tracked too, then
   dismissed when their toast expires, so they never reach the panel.
 - **DND suppresses toasts, not notifications.** The panel still fills up, which is what
-  swaync did and what makes DND safe to leave on. Only the DND flag is persisted
-  (`~/.config/waybar-control-center/notifications.json`); the list deliberately is not.
+  swaync did and what makes DND safe to leave on. The DND flag is persisted
+  (`~/.config/waybar-control-center/notifications.json`), and separately, so is the
+  notification list itself — up to 50 entries in
+  `~/.cache/waybar-control-center/notification-history.json`, debounced and written as
+  plain snapshots (a `Notification` cannot be re-injected, so a restored entry is `historic:
+  true`, carries no actions, and cannot be replied to).
 - **Timeouts** mirror the old swaync config: 2s low, 4s normal, 6s critical, and a
   notification asking for its own timeout gets it. `expireTimeout == 0` means "until
   dismissed" and the toast timer is not armed at all.

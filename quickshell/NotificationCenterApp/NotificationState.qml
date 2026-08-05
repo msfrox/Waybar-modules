@@ -227,8 +227,10 @@ Singleton {
     }
 
     // --- PERSISTENCE ---------------------------------------------------------
-    // Only DND is persisted. The notification list deliberately is not: a list
-    // restored from before a reboot is noise, and swaync did not keep one either.
+    // DND lives here, in $XDG_CONFIG, because it is a preference. The
+    // notification list is persisted too but separately, in $XDG_CACHE — see the
+    // HISTORY block above. Keeping them in one file would put regenerable state
+    // into a file the settings app treats as user intent.
     FileView {
         id: settingsFile
         path: Quickshell.env("HOME") + "/.config/waybar-control-center/notifications.json"

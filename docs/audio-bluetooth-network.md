@@ -31,8 +31,14 @@ with `Hidden=true` overrides in `~/.config/autostart/`.
 ## Audio
 
 Output and input sliders with the icon as the mute toggle, a radio list of sinks and
-sources, and a gear to `pavucontrol`. Per-app stream routing is deliberately not
-duplicated — that is what right-click is for.
+sources, and a gear to `pavucontrol`. Every slider — output, input, and per-app — responds
+to the mouse wheel as well as a drag (`wheelEnabled` on the `Slider`), so a notch over the
+volume row is enough; no need to grab the handle.
+
+Below the input list is an **Applications** block: one volume slider per active PipeWire
+stream, labelled with the stream's own name. What it does not do is per-app *routing* —
+moving a stream to a different output device — which is still `pavucontrol`'s job and why
+right-click keeps opening it.
 
 It also carries an **Easy Effects** block: active/bypassed state, a one-click bypass
 toggle, and the output preset list with the current one marked.
@@ -159,14 +165,19 @@ The translucency has to live in the card's **fill colour**, not in the window's 
 opaque surface see-through:
 
 ```qml
-color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.45)
+color: Qt.rgba(Theme.background.r, Theme.background.g, Theme.background.b, 0.30)
 ```
 
 `ignore_alpha` matters because the card leaves a 20px fully transparent margin for its drop
 shadow; without it Hyprland frosts a 420px-wide rectangle of wallpaper around every popup.
 
+0.30 is not an arbitrary choice — swaync's own Matugen-generated `colors.css` defines
+`@blur_background: rgba(bg, 0.3)`, and matching it means this panel and swaync's remaining
+popups read as the same system rather than two different ones bolted together.
+
 > [!tip] Proving the rule is applied
 > Blur is invisible over a flat backdrop, so "it isn't working" is easy to conclude wrongly.
 > Temporarily add `dim_around = true` to the rule and reload — if the screen dims when the
 > panel opens, the rule is live and the fill is simply too opaque. That is exactly what
-> happened here at `0.62`; `0.45` reads as glass.
+> happened here at `0.62`; it took two more passes (`0.45`, then `0.30`) before the card
+> actually read as glass.

@@ -65,8 +65,11 @@ Shared conventions for every panel added here, taken from the existing ML4W wind
       popups and a `NotificationState` singleton. Replaces both ML4W's `CalendarApp` and
       swaync. Also fixed frosted glass, which had never actually worked anywhere. Details
       in [docs/notifications.md](docs/notifications.md).
-- [ ] **Phase 9 — the settings app.** A standalone Quickshell config, launched on demand,
-      that edits the JSON the panels already read. See the scope contract.
+- [~] **Phase 9 — the settings app.** Scaffolded and working: a standalone GTK4/libadwaita
+      app at `settings/`, launched from the Control Center's Settings tile. Notifications,
+      usage dial and a fully generated Waybar page all edit real files. Control Center
+      section/quick-action editing and Waybar module add/remove are still to do — see
+      [docs/settings.md](docs/settings.md).
 
 ### Scope contracts
 
@@ -89,10 +92,15 @@ to shed.
 whole session, and every panel it fronts has settings that currently only exist as hand-
 edited JSON. The point of this phase is an *adjustment surface*, not a new runtime:
 
-- **Its own Quickshell config**, launched on demand (`qs -c settings`), not another window
-  in `shell.qml`. A settings UI that is instantiated at login costs memory and startup time
-  every session to be looked at once a month. Opening it is a process spawn; closing it
-  frees everything.
+- **Its own process**, launched on demand, not another window in `shell.qml`. A settings UI
+  instantiated at login costs memory and startup time every session to be looked at once a
+  month. Opening it is a spawn; closing it frees everything.
+  *Built as GTK4/libadwaita, not Quickshell.* Two reasons beyond cost: this is meant to grow
+  into the control surface for the whole session, which is a different lifetime from a
+  slide-in popup; and libadwaita already ships the exact widget set a settings UI needs, so
+  rebuilding `PreferencesPage`/`SwitchRow`/`SpinRow` in QML would have been the whole job.
+  (Note `qs -c settings` would not have worked anyway: with `~/.config/quickshell/shell.qml`
+  present, Quickshell registers it as the only config and ignores subdirectories.)
 - **It edits files, it does not hold state.** Each panel keeps owning its own settings file
   under `~/.config/waybar-control-center/`. The settings app reads those files, writes them
   back, and the panels pick the change up through the `FileView` watch they already have.

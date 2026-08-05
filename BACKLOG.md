@@ -18,8 +18,6 @@ Ideas parked rather than built, so they stay out of the working context.
 - **A player switcher in the Media section.** It currently shows the first playing player
   and falls back to the first player at all. With Spotify, Firefox and AudioTube all
   registered at once that is a guess, not a choice.
-- **Notification history across restarts.** Deliberately not persisted today — swaync did
-  not either, and a list restored from before a reboot is noise. Revisit if it is missed.
 - **Inline replies.** The server advertises `inlineReplySupported` and `Notification`
   carries `hasInlineReply` / `inlineReplyPlaceholder` / `sendInlineReply()`, but nothing
   draws the field yet.

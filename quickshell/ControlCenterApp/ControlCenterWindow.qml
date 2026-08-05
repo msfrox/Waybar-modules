@@ -1036,6 +1036,21 @@ PanelWindow {
                                         ["bash", "-c", Quickshell.env("HOME") + "/.config/hypr/scripts/screenshot.sh"])
                                 }
                             }
+
+                            // A standalone GTK4/libadwaita app, deliberately not part of
+                            // the shell - it costs nothing when closed and can grow into
+                            // a control surface for the whole session later. It edits the
+                            // JSON files the panels already watch, so there is no IPC.
+                            ToolTile {
+                                glyph: "tune"
+                                label: "Settings"
+                                detail: "Settings"
+                                hint: "Open the Control Center settings app"
+                                onTriggered: {
+                                    root.isOpen = false
+                                    Quickshell.execDetached(["waybar-control-center-settings"])
+                                }
+                            }
                         }
                     }
 

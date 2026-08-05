@@ -72,6 +72,34 @@ for src in "$REPO"/quickshell/*/; do
   ok "linked quickshell/$name"
 done
 
+# --- settings app ----------------------------------------------------------
+# A standalone GTK4/libadwaita application, NOT a Quickshell window: it is
+# opened deliberately, edits the JSON the panels already watch, and costs
+# nothing when it is not running. Symlinked rather than copied so editing the
+# repo edits the installed app, same as everything else here.
+BIN_DIR="$HOME/.local/bin"
+APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+mkdir -p "$BIN_DIR" "$APPS_DIR"
+
+chmod +x "$REPO/settings/waybar-control-center-settings"
+ln -sfn "$REPO/settings/waybar-control-center-settings" \
+        "$BIN_DIR/waybar-control-center-settings"
+ok "linked waybar-control-center-settings -> $BIN_DIR"
+
+ln -sfn "$REPO/settings/waybar-control-center-settings.desktop" \
+        "$APPS_DIR/waybar-control-center-settings.desktop"
+ok "linked the .desktop entry"
+
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *) warn "$BIN_DIR is not on your PATH — the Control Center's Settings tile will not find it" ;;
+esac
+
+if ! python3 -c 'import gi; gi.require_version("Adw", "1")' 2>/dev/null; then
+  warn "python-gobject with libadwaita is missing — the settings app will not start"
+  warn "  install: python-gobject libadwaita gtk4"
+fi
+
 # --- things you have to merge yourself -------------------------------------
 cat <<EOF
 
