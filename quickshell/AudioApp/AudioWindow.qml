@@ -145,9 +145,17 @@ PanelWindow {
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property var source: Pipewire.defaultAudioSource
 
+    // Mirror image of the filter above: isStream picks out an application's
+    // audio feed instead of a device, and isSink on a stream means it is the
+    // playback side (feeding a sink) rather than the recording side (tapping
+    // a source) - so this is "what apps are making sound", not "what apps are
+    // listening".
+    readonly property var streams: Pipewire.nodes.values.filter(
+        n => n.audio && n.isStream && n.isSink)
+
     // Without this, every node's volume and mute read zero and never move.
     PwObjectTracker {
-        objects: root.audioNodes
+        objects: root.audioNodes.concat(root.streams)
     }
 
     function label(node) {
@@ -170,6 +178,15 @@ PanelWindow {
         if (!node) return "None"
         const nick = node.properties ? node.properties["node.nick"] : ""
         return nick || node.nickname || node.description || node.name || "Unknown"
+    }
+
+    // Streams identify themselves by application, not by the device fields
+    // shortLabel() reads - "application.name" is where PipeWire actually puts
+    // it, with description/name as fallbacks for streams that omit it.
+    function streamLabel(node) {
+        if (!node) return "Unknown"
+        const appName = node.properties ? node.properties["application.name"] : ""
+        return appName || node.description || node.name || "Unknown"
     }
 
     // --- REUSABLE PIECES ---
@@ -477,6 +494,46 @@ PanelWindow {
                         node: modelData
                         selected: root.source && modelData.id === root.source.id
                         onPicked: Pipewire.preferredDefaultAudioSource = modelData
+                    }
+                }
+            }
+
+            Divider { visible: root.streams.length > 0 }
+
+            // --- APPLICATIONS ---
+            // Hidden wholesale when nothing is playing, same reasoning as INPUT:
+            // an empty "Applications" heading is noise, not information.
+            SectionLabel {
+                text: "Applications"
+                visible: root.streams.length > 0
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 10
+                visible: root.streams.length > 0
+
+                Repeater {
+                    model: root.streams
+                    ColumnLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.streamLabel(modelData)
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            color: Theme.on_surface
+                            elide: Text.ElideRight
+                        }
+
+                        VolumeRow {
+                            node: modelData
+                            onIcon: "volume_up"
+                            offIcon: "volume_off"
+                        }
                     }
                 }
             }
