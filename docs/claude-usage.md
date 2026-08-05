@@ -39,9 +39,9 @@ continuously creeping wedge reads as noise; the exact figure is one hover away.
 | Path | Role |
 |---|---|
 | `waybar/scripts/claude-usage.py` | fetch, cache, render, tooltip, settings |
-| `~/.cache/waybar-modules/claude-usage-state.json` | last good reading |
-| `~/.cache/waybar-modules/claude-usage.png` | the dial |
-| `~/.config/waybar-modules/claude-usage.json` | settings |
+| `~/.cache/waybar-control-center/claude-usage-state.json` | last good reading |
+| `~/.cache/waybar-control-center/claude-usage.png` | the dial |
+| `~/.config/waybar-control-center/claude-usage.json` | settings |
 
 The script owns all four. The Quickshell panel reads the state file and writes settings
 through `claude-usage.py --set key=value` — two processes hand-editing the same JSON would

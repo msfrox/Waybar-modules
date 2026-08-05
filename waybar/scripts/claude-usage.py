@@ -45,8 +45,8 @@ HOME = os.path.expanduser("~")
 CRED = os.path.join(os.environ.get("CLAUDE_CONFIG_DIR", os.path.join(HOME, ".claude")),
                     ".credentials.json")
 PALETTE = os.path.join(HOME, ".config/ml4w/colors/colors.json")
-SETTINGS = os.path.join(HOME, ".config/waybar-modules/claude-usage.json")
-CACHE_DIR = os.path.join(HOME, ".cache/waybar-modules")
+SETTINGS = os.path.join(HOME, ".config/waybar-control-center/claude-usage.json")
+CACHE_DIR = os.path.join(HOME, ".cache/waybar-control-center")
 STATE = os.path.join(CACHE_DIR, "claude-usage-state.json")
 IMAGE = os.path.join(CACHE_DIR, "claude-usage.png")
 

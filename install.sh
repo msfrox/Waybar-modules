@@ -14,6 +14,17 @@ bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 warn() { printf '\033[33m! %s\033[0m\n' "$*"; }
 ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
 
+# --- one-time rename migration ---------------------------------------------
+# The project used to be called "Waybar-modules", and its settings and cache
+# directories were named after it. Move them once so an existing install keeps
+# its settings instead of silently falling back to defaults.
+for base in "${XDG_CONFIG_HOME:-$HOME/.config}" "${XDG_CACHE_HOME:-$HOME/.cache}"; do
+  if [ -d "$base/waybar-modules" ] && [ ! -e "$base/waybar-control-center" ]; then
+    mv "$base/waybar-modules" "$base/waybar-control-center"
+    ok "migrated $base/waybar-modules -> waybar-control-center"
+  fi
+done
+
 # --- git hooks -------------------------------------------------------------
 if [ -d "$REPO/.git" ]; then
   git -C "$REPO" config core.hooksPath .githooks

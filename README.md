@@ -1,8 +1,8 @@
-# Waybar Modules
+# Waybar Control Center
 
-A set of Waybar modules and Quickshell popups for a Hyprland desktop, built to close the
-gap between Waybar's text-only modules and the polished popup UIs that full desktop
-environments ship with.
+A control centre and a set of panel-backed Waybar modules for a Hyprland desktop, built to
+close the gap between Waybar's text-only modules and the polished popup UIs that full
+desktop environments ship with.
 
 Waybar is excellent at putting information *on* a bar. It is deliberately bad at anything
 that needs a panel: its modules are GTK widgets fed by text or JSON, it cannot host a
@@ -38,8 +38,8 @@ follows the wallpaper.
 ## Install
 
 ```bash
-git clone https://github.com/msfrox/Waybar-modules.git
-cd Waybar-modules
+git clone https://github.com/msfrox/waybar-control-center.git
+cd waybar-control-center
 ./install.sh
 ```
 

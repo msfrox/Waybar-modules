@@ -1,13 +1,13 @@
 # Handoff
 
 **State: all six planned phases shipped and running live on RUBY2.**
-Repo: `msfrox/Waybar-modules` (public). Everything is symlinked into `~/.config` by
+Repo: `msfrox/waybar-control-center` (public). Everything is symlinked into `~/.config` by
 `install.sh`, so editing the repo edits the live desktop.
 
 ## Resume
 
 ```bash
-cd ~/Projects/Waybar-modules && ./install.sh
+cd ~/Projects/waybar-control-center && ./install.sh
 ```
 
 Reload after a change: `~/.config/waybar/launch.sh` for bar changes; Quickshell hot-reloads
