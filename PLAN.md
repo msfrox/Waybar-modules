@@ -65,12 +65,12 @@ Shared conventions for every panel added here, taken from the existing ML4W wind
       popups and a `NotificationState` singleton. Replaces both ML4W's `CalendarApp` and
       swaync. Also fixed frosted glass, which had never actually worked anywhere. Details
       in [docs/notifications.md](docs/notifications.md).
-- [~] **Phase 9 — the settings app. Closed here; moved to hyprsys.** Scaffolded and
+- [x] **Phase 9 — the settings app. ✅ Closed here; moved to hyprsys.** Scaffolded and
       working: a standalone GTK4/libadwaita app at `settings/`, launched from the Control
       Center's Settings tile. Notifications, usage dial and a fully generated Waybar page
       all edit real files. The two unfinished pieces — Control Center
-      section/quick-action editing, and Waybar module add/remove/reorder — **move to
-      [hyprsys](https://github.com/msfrox/hyprsys) phase 6 together with the app itself**.
+      section/quick-action editing, and Waybar module add/remove — **moved to
+      [hyprsys](https://github.com/msfrox/hyprsys) phase 3 together with the app itself**.
       See [the settings section below](#the-settings-app-moved-out) before doing any
       further settings work in this repo.
 

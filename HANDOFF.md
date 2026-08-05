@@ -87,7 +87,7 @@ is what lets the UI move to another repo without either side noticing.
 ## The settings app — moving to hyprsys, do not extend it here
 
 **`settings/` is being absorbed by [hyprsys](https://github.com/msfrox/hyprsys) in its
-phase 6.** It still works and is still installed; nothing is deleted until that lands. But
+phase 3.** It still works and is still installed; nothing is deleted until that lands. But
 no new settings UI is built in this repo — see PLAN.md, "The settings app, moved out".
 
 Both unfinished phase-9 items are **done** (2026-08-06). This repo's half was making the
@@ -118,8 +118,8 @@ version looked correct and silently parsed nothing (real comments in it contain 
 
 ## Next
 
-**Not the settings app** — it moves to hyprsys phase 6, along with its two unfinished
-items. See PLAN.md, "The settings app, moved out".
+**Not the settings app** — it moved to hyprsys phase 3, along with its two unfinished
+items — all now done. See PLAN.md, "The settings app, moved out".
 
 Nothing is blocking hyprsys any more. `settings/` here still works and is still installed;
 deleting it and repointing the Control Center's Settings tile at `hyprsys` is a deliberate

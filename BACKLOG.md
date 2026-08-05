@@ -62,7 +62,7 @@ panel reads a hidden-set from `control-center.json` and publishes a catalogue of
 sections and tiles for hyprsys to render.
 
 ~~Phase 9, the settings app.~~ Shipped, then moved: `settings/` is absorbed by
-[hyprsys](https://github.com/msfrox/hyprsys) in its phase 6, together with the two items
+[hyprsys](https://github.com/msfrox/hyprsys) in its phase 3, together with the two items
 it never finished. See PLAN.md, "The settings app, moved out". Do not build settings UI in
 this repo.
 
