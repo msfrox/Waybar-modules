@@ -58,11 +58,30 @@ IPC targets: `qs ipc show`. The ones this repo owns are `audio`, `bluetooth`, `n
   is not installed and fails the same silent way.
 - **`highlighted` is FINAL on `Button`.** Shadowing it does not warn — it fails the entire
   Quickshell config to load, with the error pointing at the property rather than the cause.
+- **Never call `StatusNotifierItem.display()` from a focus-grabbed panel.** It opens a
+  separate compositor surface; taking focus clears the `HyprlandFocusGrab`, which closes
+  the panel and the menu with it. Symptom: right-click does nothing, log is clean. Draw the
+  menu inline off `QsMenuOpener` instead. `QsMenuEntry` is activated by emitting its
+  `triggered` signal — there is no callable `activate()`.
+- **`pkill -f <pattern>` matches the shell running it** if the pattern appears in that
+  shell's own command line. Cost a terminal twice today. Use `pkill -x`.
 - **`nm-applet` and `blueman` are masked** via `Hidden=true` in `~/.config/autostart/`.
   That also removed NetworkManager's secret agent and BlueZ's pairing agent — see
   `BACKLOG.md`.
 - **Commit authorship is enforced** by `.githooks/commit-msg`, enabled through
   `core.hooksPath`. `install.sh` sets it; a fresh clone needs it set again.
+
+## Settings files this repo writes
+
+| Path | Holds |
+|---|---|
+| `~/.config/waybar-control-center/claude-usage.json` | usage dial display options |
+| `~/.config/waybar-control-center/notifications.json` | DND flag |
+| `~/.config/waybar-control-center/control-center.json` | per-section collapse state |
+| `~/.cache/waybar-control-center/notification-history.json` | notification history across restarts (capped at 50) |
+
+These are what phase 9's settings app will edit. Each panel already watches its own file
+through a `FileView`, so the settings app never has to talk to the running shell.
 
 ## Next
 
