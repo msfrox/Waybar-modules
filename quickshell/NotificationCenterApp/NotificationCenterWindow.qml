@@ -300,7 +300,7 @@ PanelWindow {
 
                 Text {
                     Layout.fillWidth: true
-                    text: Qt.formatDateTime(root.now, "HH:mm")
+                    text: Qt.formatDateTime(root.now, "HH:mm:ss")
                     color: Theme.primary
                     font.family: Theme.fontFamily
                     font.pixelSize: 56
