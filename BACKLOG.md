@@ -52,10 +52,16 @@ Ideas parked rather than built, so they stay out of the working context.
 
 ## Next session — queued, in order
 
-1. **Phase 9, the settings app.** Scope contract is in `PLAN.md`. The one genuinely new
-   idea in it is the Waybar section: read `modules.json`, list each key with its current
-   value, and choose the control from the value's *type*, so new modules need no new code.
+1. **Make Control Center sections and quick actions data-driven.** Both are compiled into
+   `ControlCenterApp`'s QML today, which is why the settings app can only edit collapse
+   state. Move them into `control-center.json` alongside it. This is the QML-side
+   prerequisite for hyprsys phase 6 — the settings UI itself is no longer built here.
 2. **Tray submenus**, if the inline menu landed without them.
+
+~~Phase 9, the settings app.~~ Shipped, then moved: `settings/` is absorbed by
+[hyprsys](https://github.com/msfrox/hyprsys) in its phase 6, together with the two items
+it never finished. See PLAN.md, "The settings app, moved out". Do not build settings UI in
+this repo.
 
 ### On reusing ML4W's sidebar widgets
 

@@ -65,11 +65,14 @@ Shared conventions for every panel added here, taken from the existing ML4W wind
       popups and a `NotificationState` singleton. Replaces both ML4W's `CalendarApp` and
       swaync. Also fixed frosted glass, which had never actually worked anywhere. Details
       in [docs/notifications.md](docs/notifications.md).
-- [~] **Phase 9 — the settings app.** Scaffolded and working: a standalone GTK4/libadwaita
-      app at `settings/`, launched from the Control Center's Settings tile. Notifications,
-      usage dial and a fully generated Waybar page all edit real files. Control Center
-      section/quick-action editing and Waybar module add/remove are still to do — see
-      [docs/settings.md](docs/settings.md).
+- [~] **Phase 9 — the settings app. Closed here; moved to hyprsys.** Scaffolded and
+      working: a standalone GTK4/libadwaita app at `settings/`, launched from the Control
+      Center's Settings tile. Notifications, usage dial and a fully generated Waybar page
+      all edit real files. The two unfinished pieces — Control Center
+      section/quick-action editing, and Waybar module add/remove/reorder — **move to
+      [hyprsys](https://github.com/msfrox/hyprsys) phase 6 together with the app itself**.
+      See [the settings section below](#the-settings-app-moved-out) before doing any
+      further settings work in this repo.
 
 ### Scope contracts
 
@@ -159,6 +162,37 @@ card looks identical, nothing behind it was ever showing through. Rectangle has 
 border, so the fix was to drop the gradient and use one rectangle with a translucent fill
 and a hairline `border`.
 
+## The settings app, moved out
+
+The settings UI is leaving this repo. It grew out of the scope this project is good at.
+
+The phase-9 scope contract above says the settings app "is meant to grow into the control
+surface for the whole session" — and once that was taken seriously, it stopped being a
+Waybar accessory. The settings a laptop actually needs first are power, lid, idle, lock,
+night light, theming, fonts, default apps and autostart, none of which this repo has any
+business owning: they are not panel state and not Waybar config. That app is
+[**hyprsys**](https://github.com/msfrox/hyprsys), and it absorbs `settings/` wholesale in
+its phase 6.
+
+**What that means for work in this repo:**
+
+- **Do not build new settings UI here.** Not a page, not a field, not a new backing file
+  format. If a panel needs a new option, add the setting *file* it reads and stop there —
+  the UI for it belongs in hyprsys.
+- **The QML side of the two unfinished items is still this repo's job.** hyprsys cannot
+  make Control Center section visibility and the quick-action list editable while they are
+  compiled into `ControlCenterApp`'s QML; the same goes for module ordering living in the
+  theme's `config`. Making that state data-driven — reading it from
+  `control-center.json` the way collapse state already is — is the prerequisite, and it is
+  a Quickshell change, not a settings change.
+- **`settings/` stays here and keeps working until hyprsys phase 6 lands.** Nothing is
+  deleted early; the Control Center's Settings tile keeps opening it. When phase 6 ships,
+  `settings/` is deleted and the tile launches `hyprsys` instead.
+- **The audio, network and bluetooth placeholder pages are not coming back.** They front
+  live device state with no settings file behind them, which is why they were empty.
+  hyprsys phase 5 does them properly against NetworkManager, BlueZ and PipeWire.
+
 ## Next
 
-See [BACKLOG.md](BACKLOG.md).
+The settings app is no longer this repo's next step — see above. Everything else is in
+[BACKLOG.md](BACKLOG.md).

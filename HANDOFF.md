@@ -80,10 +80,21 @@ IPC targets: `qs ipc show`. The ones this repo owns are `audio`, `bluetooth`, `n
 | `~/.config/waybar-control-center/control-center.json` | per-section collapse state |
 | `~/.cache/waybar-control-center/notification-history.json` | notification history across restarts (capped at 50) |
 
-These are what phase 9's settings app will edit. Each panel already watches its own file
-through a `FileView`, so the settings app never has to talk to the running shell.
+These are what the settings app edits. Each panel already watches its own file through a
+`FileView`, so the settings app never has to talk to the running shell — and that contract
+is what lets the UI move to another repo without either side noticing.
 
-## The settings app
+## The settings app — moving to hyprsys, do not extend it here
+
+**`settings/` is being absorbed by [hyprsys](https://github.com/msfrox/hyprsys) in its
+phase 6.** It still works and is still installed; nothing is deleted until that lands. But
+no new settings UI is built in this repo — see PLAN.md, "The settings app, moved out".
+
+The two unfinished phase-9 items go with it, and each has a **QML-side prerequisite that
+is still this repo's job**: Control Center section visibility and the quick-action list are
+compiled into `ControlCenterApp`'s QML, and module order lives in the theme's `config`.
+Nothing can edit either until that state moves into `control-center.json`, the way collapse
+state already has.
 
 `settings/` — a standalone **GTK4/libadwaita** app, not a Quickshell panel.
 `install.sh` symlinks it to `~/.local/bin/waybar-control-center-settings` and installs a
@@ -103,7 +114,11 @@ version looked correct and silently parsed nothing (real comments in it contain 
 
 ## Next
 
-Finish phase 9: Control Center section/quick-action editing is still compiled into the QML,
-and Waybar module add/remove/reorder is not implemented — only editing existing keys.
+**Not the settings app** — it moves to hyprsys phase 6, along with its two unfinished
+items. See PLAN.md, "The settings app, moved out".
+
+What is still this repo's to do, if anything is picked up here: make Control Center section
+visibility and the quick-action list data-driven out of `control-center.json`, since that
+is the QML-side blocker hyprsys cannot work around.
 
 Everything else is in `BACKLOG.md`.
