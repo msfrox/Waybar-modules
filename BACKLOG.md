@@ -24,6 +24,9 @@ Ideas parked rather than built, so they stay out of the working context.
 ## Control Center
 
 - Migrate the quicklinks drawer.
+- `custom/nowplaying` **stays on the bar** by the owner's call, alongside the Control
+  Center's Media section rather than replaced by it — the bar module is the at-a-glance
+  read, the section is the one with transport controls and album art.
 - Per-core CPU and a short history sparkline — the one thing COSMIC's Minimon applet has
   that nothing here does.
 - Remember collapsed sections across restarts.
