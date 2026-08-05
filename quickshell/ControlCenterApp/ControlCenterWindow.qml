@@ -1406,71 +1406,197 @@ PanelWindow {
                         }
 
                         Repeater {
+                            id: trayRepeater
                             model: SystemTray.items
 
-                            Rectangle {
+                            // display() hands the entry list to the compositor as a
+                            // second surface. That surface takes focus, the panel's
+                            // HyprlandFocusGrab sees focus leave, and onCleared closes
+                            // the whole panel out from under the menu - indistinguishable
+                            // from the click doing nothing. Tracking the open item here
+                            // instead and rendering the entries as ordinary rows keeps
+                            // everything on the one surface the grab already owns.
+                            property var openItem: null
+
+                            ColumnLayout {
                                 id: trayRow
                                 required property var modelData
+                                readonly property bool menuOpen: trayRepeater.openItem === trayRow.modelData
 
                                 Layout.fillWidth: true
-                                implicitHeight: 38
-                                radius: 6
-                                color: trayMouse.containsMouse
-                                       ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12)
-                                       : "transparent"
+                                spacing: 4
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 6
-                                    anchors.rightMargin: 6
-                                    spacing: 10
+                                // Resolves the item's menu handle into a flat list of
+                                // QsMenuEntry children. Kept bound regardless of menuOpen
+                                // so the entries are already there the moment a row
+                                // expands instead of popping in a frame late.
+                                QsMenuOpener {
+                                    id: menuOpener
+                                    menu: trayRow.modelData.menu
+                                }
 
-                                    Image {
-                                        source: trayRow.modelData.icon
-                                        sourceSize.width: 20
-                                        sourceSize.height: 20
-                                        width: 20
-                                        height: 20
-                                        fillMode: Image.PreserveAspectFit
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    implicitHeight: 38
+                                    radius: 6
+                                    color: trayMouse.containsMouse
+                                           ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12)
+                                           : "transparent"
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 6
+                                        anchors.rightMargin: 6
+                                        spacing: 10
+
+                                        Image {
+                                            source: trayRow.modelData.icon
+                                            sourceSize.width: 20
+                                            sourceSize.height: 20
+                                            width: 20
+                                            height: 20
+                                            fillMode: Image.PreserveAspectFit
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: trayRow.modelData.tooltipTitle
+                                                  || trayRow.modelData.title
+                                                  || trayRow.modelData.id
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: 12
+                                            color: Theme.on_surface
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Glyph {
+                                            text: "more_vert"
+                                            font.pixelSize: 16
+                                            // Same glyph either way - open state reads
+                                            // through its color rather than swapping the
+                                            // icon, so the affordance does not jump around.
+                                            color: trayRow.menuOpen ? Theme.primary : Theme.outline
+                                            visible: trayRow.modelData.hasMenu
+                                        }
                                     }
 
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: trayRow.modelData.tooltipTitle
-                                              || trayRow.modelData.title
-                                              || trayRow.modelData.id
-                                        font.family: Theme.fontFamily
-                                        font.pixelSize: 12
-                                        color: Theme.on_surface
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Glyph {
-                                        text: "more_vert"
-                                        font.pixelSize: 16
-                                        color: Theme.outline
-                                        visible: trayRow.modelData.hasMenu
+                                    MouseArea {
+                                        id: trayMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                        onClicked: mouse => {
+                                            // An item with onlyMenu has no activate
+                                            // action at all - left-clicking it in a
+                                            // real tray opens the menu too.
+                                            if (mouse.button === Qt.RightButton
+                                                    || trayRow.modelData.onlyMenu) {
+                                                if (trayRow.modelData.hasMenu) {
+                                                    trayRepeater.openItem = trayRow.menuOpen
+                                                        ? null : trayRow.modelData
+                                                }
+                                            } else {
+                                                trayRow.modelData.activate()
+                                                root.isOpen = false
+                                            }
+                                        }
                                     }
                                 }
 
-                                MouseArea {
-                                    id: trayMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                    onClicked: mouse => {
-                                        // An item with onlyMenu has no activate
-                                        // action at all - left-clicking it in a
-                                        // real tray opens the menu too.
-                                        if (mouse.button === Qt.RightButton
-                                                || trayRow.modelData.onlyMenu) {
-                                            if (trayRow.modelData.hasMenu) {
-                                                trayRow.modelData.display(root, mouse.x, mouse.y)
+                                // The inline menu itself. Sits in the row's own place in
+                                // the layout, so it pushes everything below it down
+                                // rather than floating over it.
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.leftMargin: 14
+                                    spacing: 0
+                                    visible: trayRow.menuOpen
+
+                                    Repeater {
+                                        model: trayRow.menuOpen ? menuOpener.children : null
+
+                                        Rectangle {
+                                            id: entryRow
+                                            required property var modelData
+
+                                            Layout.fillWidth: true
+                                            implicitHeight: entryRow.modelData.isSeparator ? 9 : 30
+                                            radius: 6
+                                            color: entryMouse.containsMouse
+                                                   ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.12)
+                                                   : "transparent"
+
+                                            // A separator carries no text - a hairline
+                                            // stands in for the row instead.
+                                            Rectangle {
+                                                visible: entryRow.modelData.isSeparator
+                                                anchors.left: parent.left
+                                                anchors.right: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                implicitHeight: 1
+                                                color: Theme.outline_variant
                                             }
-                                        } else {
-                                            trayRow.modelData.activate()
-                                            root.isOpen = false
+
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 6
+                                                anchors.rightMargin: 6
+                                                spacing: 8
+                                                visible: !entryRow.modelData.isSeparator
+
+                                                Image {
+                                                    source: entryRow.modelData.icon || ""
+                                                    visible: !!entryRow.modelData.icon
+                                                    sourceSize.width: 16
+                                                    sourceSize.height: 16
+                                                    width: 16
+                                                    height: 16
+                                                    fillMode: Image.PreserveAspectFit
+                                                    opacity: entryRow.modelData.enabled ? 1 : 0.4
+                                                }
+
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: entryRow.modelData.text
+                                                    font.family: Theme.fontFamily
+                                                    font.pixelSize: 12
+                                                    color: Theme.on_surface
+                                                    opacity: entryRow.modelData.enabled ? 1 : 0.4
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                // Submenus are not walked here - hasChildren
+                                                // just gets a marker rather than a working
+                                                // descent. Doing that properly means another
+                                                // level of QsMenuOpener plus its own open/close
+                                                // state, which is more than a small addition;
+                                                // flagged in the report instead of guessed at.
+                                                Glyph {
+                                                    text: "chevron_right"
+                                                    font.pixelSize: 14
+                                                    color: Theme.outline
+                                                    visible: entryRow.modelData.hasChildren
+                                                }
+                                            }
+
+                                            MouseArea {
+                                                id: entryMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                enabled: !entryRow.modelData.isSeparator
+                                                         && entryRow.modelData.enabled
+                                                onClicked: {
+                                                    // QsMenuEntry has no callable "activate" -
+                                                    // triggered is a plain signal, and calling
+                                                    // a signal like a method is how QML emits
+                                                    // it. That emission is what the compositor
+                                                    // is actually listening for.
+                                                    entryRow.modelData.triggered()
+                                                    trayRepeater.openItem = null
+                                                }
+                                            }
                                         }
                                     }
                                 }

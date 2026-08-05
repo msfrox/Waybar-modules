@@ -22,17 +22,24 @@ keeps one button.
 
 | Section | Source |
 |---|---|
-| **Calendar** | month grid, independent of the bar's clock popup |
 | **System** | `waybar/scripts/system-stats.py` — CPU, memory, swap, disk, temperature, fan RPMs, network rates, uptime, load |
 | **Display** | two brightness sliders — internal panel via `brightnessctl`, external monitor via DDC/CI |
-| **Quick actions** | Wi-Fi, Bluetooth, mute, do-not-disturb, lock, clipboard, keep-awake, night light, power profile — the bar's old `group/tools` plus the four toggles from swaync's own buttons-grid |
-| **Notifications** | count, DND state and the panel toggle, over `swaync-client` |
+| **Quick actions** | Wi-Fi, Bluetooth, mute, do-not-disturb, lock, clipboard, keep-awake, night light, power profile, light/dark theme, colour picker, screenshot |
+| **Media** | `Quickshell.Services.Mpris` — art, title, artist, transport, read-only progress, and a chip row to pin one player when several are registered |
+| **Notifications** | count and DND, read straight off the `NotificationState` singleton — no subprocess and no polling interval to lag behind. See [notifications.md](notifications.md) |
 | **Updates** | `ml4w-check-system-updates`, on its own 30-minute timer |
-| **Tray** | `Quickshell.Services.SystemTray` — real StatusNotifierItem icons, `activate()` on left click, the item's own DBus menu on right |
+| **Tray** | `Quickshell.Services.SystemTray` — real StatusNotifierItem icons, `activate()` on left click, the item's own DBus menu **drawn inline** on right |
 
 The panel is **bottom-anchored and content-sized**, not full height: a surface pinned to
 both vertical edges is mostly empty space on a tall screen and reads as a second desktop
 rather than as something the bar opened. It caps at 1300px so a long tray list scrolls.
+
+**Collapse state persists** to `~/.config/waybar-control-center/control-center.json`, keyed
+by section title. A section missing from that file keeps its own default rather than
+defaulting to collapsed, so adding a section later does not bring it up shut.
+
+**The calendar moved out.** It lives in the notification centre now, under the clock —
+that panel is what the bar's clock opens, and the calendar belonged next to it.
 
 The point of the first version is the **frame**, not the contents. Anything added later
 drops into a `Section`:
