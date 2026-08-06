@@ -41,10 +41,12 @@ IPC targets: `qs ipc show`. The ones this repo owns are `audio`, `bluetooth`, `n
   `config` and `style.css`, plus `CustomTheme/Theme.qml`, `PowerApp/`, `SidebarApp/` and
   `shell.qml` under `~/.config/quickshell/`. An ML4W update can clobber any of them —
   `docs/quickshell-patches.md` records what to reapply. (`CalendarApp/` is no longer used.)
-- **Quickshell owns `org.freedesktop.Notifications`.** swaync is installed but killed at
-  login by `~/.config/hypr/shehan/notifications.lua`. If notifications stop arriving, check
-  the owner first — `docs/notifications.md` has the one-liner, and explains why the kill is
-  a race with a load-bearing `sleep`.
+- **Quickshell owns `org.freedesktop.Notifications`.** swaync is D-Bus activatable, so
+  killing it is not enough — `install.sh` masks `swaync.service`, and only that survives a
+  swaync package update or an ML4W dotfiles update. The `pkill` in
+  `~/.config/hypr/shehan/notifications.lua` is the second half, covering ML4W's direct exec.
+  If notifications stop arriving, check the owner and the mask first — `docs/notifications.md`
+  has both one-liners and the full chain.
 - **Never put a `gradient:` on a card Rectangle.** A QML gradient is a *fill*: it paints the
   whole card, and a translucent rectangle inset inside it then composites against the
   gradient instead of the wallpaper. Every panel here was opaque for months because of it.

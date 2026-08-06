@@ -69,8 +69,17 @@ swaync, and `~/.config/hypr` is a symlink into `~/.mydotfiles/com.ml4w.dotfiles`
 editing that line gets reverted on the next update.
 
 `~/.config/hypr/shehan/notifications.lua`, required from `custom.lua` (which loads last
-and the updater never touches), lets ML4W start swaync and then kills it. The `sleep` and
-the `pkill -x` are both load-bearing — [notifications.md](notifications.md) explains why.
+and the updater never touches), lets ML4W start swaync and then kills it in a loop.
+
+This half only covers the *directly execed* swaync. The one that keeps coming back is
+D-Bus activated, and it is `install.sh`'s `systemctl --user mask swaync.service` that
+stops it — including the activation triggered from inside our own shell by ML4W's
+`StatusbarApp/SwayncModule.qml`, which runs `swaync-client -swb`.
+[notifications.md](notifications.md) has the full chain.
+
+`StatusbarApp/` is left untouched for the same reason as `CalendarApp/` above: the mask
+already makes its `swaync-client` call a no-op, and editing an ML4W-owned file only gives
+the next update something to restore.
 
 ---
 

@@ -72,6 +72,53 @@ for src in "$REPO"/quickshell/*/; do
   ok "linked quickshell/$name"
 done
 
+# --- keep swaync off the notification bus name -----------------------------
+# NotificationCenterApp owns org.freedesktop.Notifications, and only one process
+# on the session bus can. swaync is not merely autostarted, it is D-Bus
+# ACTIVATABLE: /usr/share/dbus-1/services ships three service files for it
+# (org.erikreider.swaync, .cc, and one that — despite its filename — claims
+# org.freedesktop.Notifications), and every one of them carries
+# SystemdService=swaync.service. So any process that talks to swaync brings the
+# daemon back and hands it the bus name, however many times it has been killed.
+#
+# There is such a process inside our own shell: ML4W's
+# ~/.config/quickshell/StatusbarApp/SwayncModule.qml runs `swaync-client -swb`
+# to drive its bell icon. That is what silently took notifications back on
+# 2026-08-06 — the hypr-side pkill had already run and won, and the statusbar
+# re-activated swaync eight seconds later.
+#
+# Masking the unit makes every activation path fail closed ("The systemd unit
+# 'swaync.service' is masked"), which is why this is here and not a pkill. The
+# mask is a symlink in ~/.config/systemd/user, so it outlives both a pacman
+# update of swaync and an ML4W dotfiles update — the two things that reverted
+# earlier attempts. Undo with: systemctl --user unmask swaync.service
+#
+# ML4W's conf/autostart.lua also execs the swaync binary directly, which walks
+# past the mask; ~/.config/hypr/shehan/notifications.lua kills that one. Both
+# halves are needed. See docs/notifications.md.
+if command -v systemctl >/dev/null 2>&1; then
+  if [ "$(systemctl --user is-enabled swaync.service 2>/dev/null)" = "masked" ]; then
+    ok "swaync.service already masked"
+  elif systemctl --user mask swaync.service >/dev/null 2>&1; then
+    ok "masked swaync.service (it can no longer be D-Bus activated)"
+  else
+    warn "could not mask swaync.service — swaync may steal org.freedesktop.Notifications"
+  fi
+  systemctl --user stop swaync.service >/dev/null 2>&1 || true
+  pkill -x swaync >/dev/null 2>&1 || true
+
+  # Quickshell re-acquires the name when the current owner releases it, so this
+  # should read 'quickshell' immediately after the stop above — no restart.
+  owner="$(gdbus call --session --dest org.freedesktop.Notifications \
+             --object-path /org/freedesktop/Notifications \
+             --method org.freedesktop.Notifications.GetServerInformation 2>/dev/null || true)"
+  case "$owner" in
+    *quickshell*) ok "org.freedesktop.Notifications is owned by Quickshell" ;;
+    "")           warn "nothing owns org.freedesktop.Notifications — start the shell: qs -d" ;;
+    *)            warn "org.freedesktop.Notifications is owned by: $owner" ;;
+  esac
+fi
+
 # --- settings app ----------------------------------------------------------
 # A standalone GTK4/libadwaita application, NOT a Quickshell window: it is
 # opened deliberately, edits the JSON the panels already watch, and costs

@@ -127,8 +127,8 @@ PAGES: list[Page] = [
         defaults={"dnd": False},
         note=(
             "Quickshell owns org.freedesktop.Notifications on this machine; swaync "
-            "is killed at login. History lives in the cache directory and is capped "
-            "at 50 entries."
+            "is masked and killed at login. History lives in the cache directory and "
+            "is capped at 50 entries."
         ),
     ),
     Page(

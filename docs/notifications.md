@@ -1,7 +1,8 @@
 # Notifications
 
 Quickshell owns `org.freedesktop.Notifications` on this machine. swaync is installed but
-killed at login.
+masked and killed at login — see [Keeping swaync off the bus name](#keeping-swaync-off-the-bus-name),
+which is the part that actually holds.
 
 ## Why swaync had to go
 
@@ -35,20 +36,64 @@ thing one card.
 The Control Center's Notifications section and its DND quick action read the same
 singleton, so they no longer poll a subprocess.
 
-## Killing swaync
+## Keeping swaync off the bus name
 
-`conf/autostart.lua:46` runs `hl.exec_cmd("swaync")`, and `~/.config/hypr` is a symlink
-into `~/.mydotfiles/com.ml4w.dotfiles`, so editing that line gets reverted on the next ML4W
-update. `~/.config/hypr/shehan/notifications.lua` (required from `custom.lua`, which loads
-last and is never touched by the updater) lets ML4W start swaync and then stops it.
+Killing swaync is not enough, and for two weeks this repo pretended it was. **swaync is
+D-Bus activatable.** `/usr/share/dbus-1/services` ships three service files for it:
 
-Two things there are load-bearing:
+```
+org.erikreider.swaync.service      Name=org.freedesktop.Notifications   (yes, really)
+org.erikreider.swaync.cc.service   Name=org.erikreider.swaync.cc
+org.kde.plasma.Notifications…      (unrelated)
+```
 
-- **The `sleep 4`.** `hl.exec_cmd` is fire-and-forget. The `pkill` has to land after swaync
-  has actually execed, or it matches nothing and swaync comes up owning the bus name —
-  Quickshell then silently never receives a notification.
-- **`pkill -x`, not `pkill -f`.** The pattern `swaync-client` appears in the `sh -c` command
-  line running the pkill, so `-f` matches that shell and kills it before it gets there.
+Every one carries `SystemdService=swaync.service`, so *anything that talks to swaync brings
+the daemon back*, and the daemon then takes `org.freedesktop.Notifications` off Quickshell.
+A `pkill` closes the process and leaves the door it came through wide open.
+
+And there is such a talker inside our own shell: ML4W's
+`~/.config/quickshell/StatusbarApp/SwayncModule.qml` runs `swaync-client -swb` to feed its
+bell icon. That is the whole 2026-08-06 regression — the hypr-side `pkill` fired at t+4s and
+won, then `qs` itself re-activated swaync eight seconds later:
+
+```
+04:16:24  qs starts, acquires org.freedesktop.Notifications
+04:16:2x  pkill -x swaync   (kills ML4W's directly-execed one)
+04:16:32  systemd[898]: Starting Swaync notification daemon...   <- dbus activation, PPID 3456 = qs
+```
+
+So the fix has two halves, and both are needed:
+
+| Half | Where | Stops |
+|---|---|---|
+| `systemctl --user mask swaync.service` | `install.sh` | every D-Bus activation path |
+| `pkill -x swaync` on hyprland start | `~/.config/hypr/shehan/notifications.lua` | ML4W's direct `hl.exec_cmd("swaync")`, which execs the binary and walks past the mask |
+
+**Why masking is the durable one.** It is a symlink to `/dev/null` in
+`~/.config/systemd/user/`, so it survives a pacman update of swaync (which rewrites
+`/usr/lib/systemd/user/` and `/usr/share/dbus-1/services/`) *and* an ML4W dotfiles update
+(which rewrites everything under `~/.mydotfiles`). Those are the two events that reverted
+every earlier attempt. Activation then fails loudly in the journal:
+
+```
+dbus-broker-launch[…]: Activation request for 'org.erikreider.swaync.cc' failed:
+The systemd unit 'swaync.service' is masked.
+```
+
+Undo with `systemctl --user unmask swaync.service`. Nothing depends on swaync
+(`pactree -r swaync` lists only itself), but leave the package installed — ML4W's installer
+pulls it in again on every update, so uninstalling is a fight that masking already won.
+
+**Quickshell re-acquires the name when the owner releases it.** Verified 2026-08-06:
+stopping swaync handed `org.freedesktop.Notifications` straight back to the running `qs`
+with no restart. This is why the ordering against Quickshell's own startup no longer
+matters — the old `sleep 4` was tuned to lose to swaync as little as possible, and it turns
+out losing is recoverable as long as swaync eventually dies. The hypr-side kill is now a
+30 × 1s loop rather than one timed shot, because a cold boot can push ML4W's exec past any
+fixed guess.
+
+**`pkill -x`, not `pkill -f`.** The pattern `swaync-client` appears in the `sh -c` command
+line running the pkill, so `-f` matches that shell and kills it before it gets there.
 
 Check who owns the name with:
 
@@ -57,7 +102,7 @@ gdbus call --session --dest org.freedesktop.Notifications --object-path /org/fre
 ```
 
 `('quickshell', 'quickshell', '', '1.2')` is right. Anything mentioning swaync means the
-kill lost the race.
+mask came off — check `systemctl --user is-enabled swaync.service`, and re-run `install.sh`.
 
 ## Behaviour notes
 
