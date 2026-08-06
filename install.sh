@@ -47,7 +47,8 @@ fi
 # --- scripts ---------------------------------------------------------------
 mkdir -p "$WAYBAR_DIR/scripts"
 for src in "$REPO"/waybar/scripts/*; do
-  [ -e "$src" ] || continue
+  [ -f "$src" ] || continue   # -f, not -e: python leaves a __pycache__/ directory
+                              # in here, and -e linked that into ~/.config too.
   dest="$WAYBAR_DIR/scripts/$(basename "$src")"
   if [ -e "$dest" ] && [ ! -L "$dest" ]; then
     warn "$dest exists and is not a symlink — backing up to $dest.bak"
